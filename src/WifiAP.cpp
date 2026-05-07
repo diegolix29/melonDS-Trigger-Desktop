@@ -35,7 +35,7 @@ using Platform::LogLevel;
 
 const char* WifiAP::APName = "melonAP";
 const u8 WifiAP::APMac[6] = {0x00, 0xF0, 0x77, 0x77, 0x77, 0x77};
-const u8 WifiAP::APChannel = 6;
+const u8 WifiAP::APChannel = 7;
 
 #define PWRITE_8(p, v)      *p++ = v;
 #define PWRITE_16(p, v)     *(u16*)p = v; p += 2;

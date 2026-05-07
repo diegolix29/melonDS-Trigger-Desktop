@@ -81,8 +81,10 @@ void LANStartHostDialog::done(int r)
 
         std::string player = ui->txtPlayerName->text().toStdString();
         int numplayers = ui->sbNumPlayers->value();
+        std::string roomName = player + "'s game"; // Default room name
+        const char* password = nullptr; // No password by default
 
-        if (!lan().StartHost(player.c_str(), numplayers))
+        if (!lan().StartHost(player.c_str(), numplayers, roomName.c_str(), password))
         {
             QMessageBox::warning(this, "melonDS", "Failed to start LAN game.");
             return;
@@ -176,7 +178,8 @@ void LANStartClientDialog::onDirectConnect()
 
     setEnabled(false);
     lan().EndDiscovery();
-    if (!lan().StartClient(player.c_str(), hostname.c_str()))
+    const char* password = nullptr; // No password by default
+    if (!lan().StartClient(player.c_str(), hostname.c_str(), password))
     {
         QString msg = QString("Failed to connect to the host %0.").arg(QString::fromStdString(hostname));
         QMessageBox::warning(this, "melonDS", msg);
@@ -219,7 +222,8 @@ void LANStartClientDialog::done(int r)
 
         setEnabled(false);
         lan().EndDiscovery();
-        if (!lan().StartClient(player.c_str(), hostname))
+        const char* password = nullptr; // No password by default
+        if (!lan().StartClient(player.c_str(), hostname, password))
         {
             QString msg = QString("Failed to connect to the host %0.").arg(QString(hostname));
             QMessageBox::warning(this, "melonDS", msg);
@@ -276,14 +280,14 @@ void LANStartClientDialog::doUpdateDiscoveryList()
     int i = 0;
     for (const auto& [key, data] : disclist)
     {
-        model->item(i, 0)->setText(data.SessionName);
+        model->item(i, 0)->setText(data.Room.RoomName);
         model->item(i, 0)->setData(QVariant(key));
 
-        QString plcount = QString("%0/%1").arg(data.NumPlayers).arg(data.MaxPlayers);
+        QString plcount = QString("%0/%1").arg(data.Room.NumPlayers).arg(data.Room.MaxPlayers);
         model->item(i, 1)->setText(plcount);
 
         QString status;
-        switch (data.Status)
+        switch (data.Room.InGame)
         {
             case 0: status = "Idle"; break;
             case 1: status = "Playing"; break;

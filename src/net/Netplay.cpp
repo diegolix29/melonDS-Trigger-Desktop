@@ -51,8 +51,15 @@ int NumPlayers;
 Player MyPlayer;
 u32 HostAddress;
 bool Lag;
+int ConnectionPort; // Store the actual connection port for mirror setup
 
 int NumMirrorClients;
+
+// Host configuration settings
+int MaxPlayers;
+int LagFrames;
+int UploadBandwidth;
+int DownloadBandwidth;
 
 struct InputFrame
 {
@@ -72,6 +79,9 @@ enum
 
     Blob_MAX
 };
+
+// Protocol version for cross-platform compatibility
+const u32 PROTOCOL_VERSION = 0x00010001; // 1.1 - matches melonDS version
 
 const u32 kChunkSize = 0x10000;
 u8 ChunkBuffer[0x10 + kChunkSize];
@@ -121,13 +131,17 @@ void DeInit()
 }
 
 
-void StartHost(const char* playername, int port)
+void StartHost(const char* playername, int port, int maxPlayers, int lagFrames, int uploadBandwidth, int downloadBandwidth)
 {
     ENetAddress addr;
     addr.host = ENET_HOST_ANY;
     addr.port = port;
 
-    Host = enet_host_create(&addr, 16, 1, 0, 0);
+    // Convert bandwidth from KB/s to bytes/s for ENet
+    enet_uint32 outgoingBandwidth = uploadBandwidth > 0 ? uploadBandwidth * 1024 : 0;
+    enet_uint32 incomingBandwidth = downloadBandwidth > 0 ? downloadBandwidth * 1024 : 0;
+
+    Host = enet_host_create(&addr, maxPlayers, 1, outgoingBandwidth, incomingBandwidth);
     if (!Host)
     {
         printf("host shat itself :(\n");
@@ -151,12 +165,18 @@ void StartHost(const char* playername, int port)
     mirroraddr.host = ENET_HOST_ANY;
     mirroraddr.port = port + 1;
 printf("host mirror host connecting to %08X:%d\n", mirroraddr.host, mirroraddr.port);
-    MirrorHost = enet_host_create(&mirroraddr, 16, 2, 0, 0);
+    MirrorHost = enet_host_create(&mirroraddr, 4, 1, 0, 0); // Reduced peers and channels for performance
     if (!MirrorHost)
     {
         printf("mirror host shat itself :(\n");
         return;
     }
+
+    // Store configuration settings
+    MaxPlayers = maxPlayers;
+    LagFrames = lagFrames;
+    UploadBandwidth = uploadBandwidth;
+    DownloadBandwidth = downloadBandwidth;
 
     Active = true;
     IsHost = true;
@@ -211,6 +231,7 @@ void StartClient(const char* playername, const char* host, int port)
     player->Status = 3;
 
     HostAddress = addr.host;
+    ConnectionPort = port; // Store the actual connection port
 
     Active = true;
     IsHost = false;
@@ -674,6 +695,12 @@ void ProcessHost()
                     Players[id].Address = event.peer->address.host;
                     event.peer->data = &Players[id];
                     NumPlayers++;
+                    
+                    // Send protocol version to client for compatibility check
+                    u8 version_cmd[5] = {0x10}; // 0x10 = protocol version
+                    *(u32*)&version_cmd[1] = PROTOCOL_VERSION;
+                    ENetPacket* version_pkt = enet_packet_create(version_cmd, 5, ENET_PACKET_FLAG_RELIABLE);
+                    enet_peer_send(event.peer, 0, version_pkt);
                 }
             }
             break;
@@ -768,13 +795,30 @@ void ProcessClient()
                         // create mirror host
                         ENetAddress mirroraddr;
                         mirroraddr.host = ENET_HOST_ANY;
-                        mirroraddr.port = 8064+1 + data[1]; // FIXME!!!!
+                        mirroraddr.port = ConnectionPort + 1 + data[1]; // Use actual connection port
 printf("client mirror host connecting to %08X:%d\n", mirroraddr.host, mirroraddr.port);
-                        MirrorHost = enet_host_create(&mirroraddr, 16, 2, 0, 0);
+                        MirrorHost = enet_host_create(&mirroraddr, 4, 1, 0, 0); // Reduced peers and channels for performance
                         if (!MirrorHost)
                         {
                             printf("mirror host shat itself :(\n");
                             break;
+                        }
+
+                        // Small delay to prevent overwhelming Android device
+                        Platform::Sleep(10); // 10ms delay
+
+                        // Validate mirror host was created successfully
+                        if (!MirrorHost)
+                        {
+                            printf("mirror host creation failed, retrying...\n");
+                            // Retry with minimal configuration
+                            mirroraddr.port = ConnectionPort + 1 + data[1];
+                            MirrorHost = enet_host_create(&mirroraddr, 2, 1, 0, 0);
+                            if (!MirrorHost)
+                            {
+                                printf("mirror host retry failed\n");
+                                break;
+                            }
                         }
 
                         // send player information
@@ -800,6 +844,19 @@ printf("client mirror host connecting to %08X:%d\n", mirroraddr.host, mirroraddr
                         }
 
                         //netplayDlg->updatePlayerList(Players, NumPlayers);
+                    }
+                    break;
+
+                case 0x10: // protocol version
+                    {
+                        if (event.packet->dataLength != 5) break;
+                        u32 host_version = *(u32*)&data[1];
+                        printf("Host protocol version: %08X, client version: %08X\n", host_version, PROTOCOL_VERSION);
+                        // For now, we'll accept all versions but log differences for debugging
+                        if (host_version != PROTOCOL_VERSION)
+                        {
+                            printf("Warning: Protocol version mismatch - cross-platform compatibility issues may occur\n");
+                        }
                     }
                     break;
 
@@ -1029,7 +1086,7 @@ void ProcessInput()
 #if 0
     if (!IsMirror)
     {
-        u32 lag = 4; // TODO: make configurable!!
+        u32 lag = LagFrames;
 
         InputFrame frame;
         frame.FrameNum = NDS::NumFrames + lag;
@@ -1083,6 +1140,27 @@ void ProcessInput()
 
     InputQueue.pop();
 #endif
+}
+
+// Configuration getter functions
+int GetMaxPlayers()
+{
+    return MaxPlayers;
+}
+
+int GetLagFrames()
+{
+    return LagFrames;
+}
+
+int GetUploadBandwidth()
+{
+    return UploadBandwidth;
+}
+
+int GetDownloadBandwidth()
+{
+    return DownloadBandwidth;
 }
 
 }

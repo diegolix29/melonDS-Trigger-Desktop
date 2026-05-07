@@ -20,6 +20,8 @@
 #define NETPLAYDIALOG_H
 
 #include <QDialog>
+#include <QClipboard>
+#include <QNetworkInterface>
 
 #include "types.h"
 #include "Netplay.h"
@@ -52,9 +54,11 @@ public:
 
 private slots:
     void done(int r);
+    void copyConnectionString();
 
 private:
     Ui::NetplayStartHostDialog* ui;
+    QString getLocalIPAddress();
 };
 
 class NetplayStartClientDialog : public QDialog
