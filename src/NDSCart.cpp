@@ -339,12 +339,7 @@ void NDSCartSlot::DecryptSecureArea(u8* out) noexcept
     u32 gamecode = header.GameCodeAsU32();
     u32 arm9base = header.ARM9ROMOffset;
 
-    Log(LogLevel::Info, "Secure area decrypt: gamecode=%08X, arm9base=%08X\n", gamecode, arm9base);
-
     memcpy(out, &cartrom[arm9base], 0x800);
-
-    Log(LogLevel::Debug, "Before decryption: first 8 bytes = %02X %02X %02X %02X %02X %02X %02X %02X\n", 
-        out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7]);
 
     Key1_InitKeycode(false, gamecode, 2, 2);
     Key1_Decrypt((u32*)&out[0]);
@@ -352,9 +347,6 @@ void NDSCartSlot::DecryptSecureArea(u8* out) noexcept
     Key1_InitKeycode(false, gamecode, 3, 2);
     for (u32 i = 0; i < 0x800; i += 8)
         Key1_Decrypt((u32*)&out[i]);
-
-    Log(LogLevel::Debug, "After decryption: first 8 bytes = %02X %02X %02X %02X %02X %02X %02X %02X\n", 
-        out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7]);
 
     if (!strncmp((const char*)out, "encryObj", 8))
     {
@@ -364,7 +356,7 @@ void NDSCartSlot::DecryptSecureArea(u8* out) noexcept
     }
     else
     {
-        Log(LogLevel::Warn, "Secure area decryption failed - got '%.8s' instead of 'encryObj'\n", (const char*)out);
+        Log(LogLevel::Warn, "Secure area decryption failed\n");
         for (u32 i = 0; i < 0x800; i += 4)
             *(u32*)&out[i] = 0xE7FFDEFF;
     }
@@ -454,18 +446,6 @@ std::unique_ptr<CartCommon> ParseROM(std::unique_ptr<u8[]>&& romdata, u32 romlen
     if (romparams.ROMSize != romlen)
         Log(LogLevel::Warn, "!! bad ROM size %d (expected %d) rounded to %d\n", romlen, romparams.ROMSize, cartromsize);
 
-    // For trimmed ROMs, pad to the expected ROM size from ROMList to avoid
-    // address wrapping issues that cause crashes in NAND-type distribution carts
-    if (romparams.ROMSize > cartromsize)
-    {
-        Log(LogLevel::Info, "Padding trimmed ROM from %d to expected size %d\n", cartromsize, romparams.ROMSize);
-        auto newrom = std::make_unique<u8[]>(romparams.ROMSize);
-        memcpy(newrom.get(), cartrom.get(), cartromsize);
-        memset(newrom.get() + cartromsize, 0xFF, romparams.ROMSize - cartromsize);
-        cartrom = std::move(newrom);
-        cartromsize = romparams.ROMSize;
-    }
-
     // generate a ROM ID
     // note: most games don't check the actual value
     // it just has to stay the same throughout gameplay
@@ -510,7 +490,7 @@ std::unique_ptr<CartCommon> ParseROM(std::unique_ptr<u8[]>&& romdata, u32 romlen
         std::optional<FATStorage> sdcard = args && args->SDCard ? std::make_optional<FATStorage>(std::move(*args->SDCard)) : std::nullopt;
         cart = std::make_unique<CartR4>(std::move(cartrom), cartromsize, cartid, romparams, CartR4TypeR4, CartR4LanguageEnglish, userdata, std::move(sdcard));
     }
-    else if ((cartid & 0x08000000) && strncmp((const char*)&gamecode, "AARE", 4) != 0)
+    else if (cartid & 0x08000000)
         cart = std::make_unique<CartRetailNAND>(std::move(cartrom), cartromsize, cartid, romparams, std::move(sram), sramlen, userdata);
     else if (irversion != 0)
         cart = std::make_unique<CartRetailIR>(std::move(cartrom), cartromsize, cartid, irversion, badDSiDump, romparams, std::move(sram), sramlen, userdata);
