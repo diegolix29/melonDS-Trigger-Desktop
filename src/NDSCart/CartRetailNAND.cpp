@@ -54,7 +54,18 @@ void CartRetailNAND::Reset()
     SRAMWindow = 0;
 
     // ROM header 94/96 = SRAM addr start / 0x20000
-    SRAMBase = *(u16*)&ROM[0x96] << 17;
+    u16 sramBaseRaw = *(u16*)&ROM[0x96];
+    SRAMBase = sramBaseRaw << 17;
+    
+    // Fix for Pokemon distribution carts: disable SRAM blocking entirely
+    // These carts need to access the entire memory space without restrictions
+    if (SRAMBase == 0)
+    {
+        SRAMBase = 0x00000000; // Keep at 0 but disable blocking
+        Log(LogLevel::Info, "NAND: Disabling SRAM blocking for Pokemon distribution cart\n");
+    }
+    
+    Log(LogLevel::Debug, "NAND: SRAMBase raw=%04X, calculated=%08X, SRAMLength=%08X, ROMLength=%08X\n", sramBaseRaw, SRAMBase, SRAMLength, ROMLength);
 
     memset(SRAMWriteBuffer, 0, 0x800);
 }
@@ -179,6 +190,7 @@ void CartRetailNAND::ROMCommandStart(NDSCart::NDSCartSlot& cartslot, const u8* c
         return;
 
     case 0x8B: // revert to ROM read mode
+        Log(LogLevel::Debug, "NAND: Switching to ROM mode, SRAMWindow=0\n");
         SRAMWindow = 0;
         return;
 
@@ -189,6 +201,8 @@ void CartRetailNAND::ROMCommandStart(NDSCart::NDSCartSlot& cartslot, const u8* c
     case 0xB2: // set window for accessing SRAM
         {
             u32 addr = (ROMCmd[1]<<24) | ((ROMCmd[2]&0xFE)<<16);
+
+            Log(LogLevel::Debug, "NAND: B2 command - setting SRAM window to %08X\n", addr);
 
             // window is 0x20000 bytes, address is aligned to that boundary
             // NAND remains stuck 'busy' forever if this is less than the starting SRAM address
@@ -209,6 +223,7 @@ void CartRetailNAND::ROMCommandStart(NDSCart::NDSCartSlot& cartslot, const u8* c
             if (SRAMWindow == 0)
             {
                 // regular ROM mode
+                Log(LogLevel::Debug, "NAND: B7 ROM read addr=%08X\n", addr);
                 return CartRetail::ROMCommandStart(cartslot, cmd);
             }
             else
@@ -255,8 +270,12 @@ u32 CartRetailNAND::ROMCommandReceive()
         if (SRAMWindow == 0)
         {
             // regular ROM mode
-            if (ROMAddr >= SRAMBase && ROMAddr < (SRAMBase+SRAMLength))
+            // Skip blocking check for Pokemon distribution carts (SRAMBase == 0)
+            if (SRAMBase != 0 && ROMAddr >= SRAMBase && ROMAddr < (SRAMBase+SRAMLength))
+            {
+                Log(LogLevel::Warn, "NAND: B7 read blocked at ROMAddr=%08X (SRAMBase=%08X, len=%08X)\n", ROMAddr, SRAMBase, SRAMLength);
                 return 0xFFFFFFFF;
+            }
 
             return CartRetail::ROMCommandReceive();
         }

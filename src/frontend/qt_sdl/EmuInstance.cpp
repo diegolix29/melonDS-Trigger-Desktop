@@ -1687,6 +1687,8 @@ void EmuInstance::customizeFirmware(Firmware& firmware, bool overridesettings) n
             currentData.Settings |= extlang ? Firmware::Language::English : language;
             currentData.ExtendedSettings.ExtendedLanguage = language;
 
+            Log(LogLevel::Info, "Firmware language set to: %d (Japanese=0, English=1, French=2, German=3, Italian=4, Spanish=5, Chinese=6)\n", (int)language);
+
             if (extlang && !(currentHeader.ConsoleType & 0x40))
             {
                 // enable the extended settings header if not present
@@ -1697,6 +1699,12 @@ void EmuInstance::customizeFirmware(Firmware& firmware, bool overridesettings) n
                 currentData.ExtendedSettings.Unknown0 = 0x01;
                 currentData.ExtendedSettings.SupportedLanguageMask = 0x7F;
             }
+        }
+        else
+        {
+            // Log the current language if not being overridden
+            int currentLang = currentData.Settings & 0x7;
+            Log(LogLevel::Info, "Using default firmware language: %d (Japanese=0, English=1, French=2, German=3, Italian=4, Spanish=5, Chinese=6)\n", currentLang);
         }
 
         // setting up color

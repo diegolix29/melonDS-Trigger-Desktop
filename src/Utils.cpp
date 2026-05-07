@@ -36,6 +36,10 @@ std::pair<std::unique_ptr<u8[]>, u32> PadToPowerOf2(std::unique_ptr<u8[]>&& data
 
     auto newdata = std::make_unique<u8[]>(newlen);
     memcpy(newdata.get(), data.get(), len);
+    // Initialize padded area with 0xFF (flash memory default state)
+    // Prevents crashes when trimmed ROMs read beyond their actual data
+    if (newlen > len)
+        memset(newdata.get() + len, 0xFF, newlen - len);
     data = nullptr;
     return {std::move(newdata), newlen};
 }
@@ -51,6 +55,10 @@ std::pair<std::unique_ptr<u8[]>, u32> PadToPowerOf2(const u8* data, u32 len) noe
 
     auto newdata = std::make_unique<u8[]>(newlen);
     memcpy(newdata.get(), data, len);
+    // Initialize padded area with 0xFF (flash memory default state)
+    // Prevents crashes when trimmed ROMs read beyond their actual data
+    if (newlen > len)
+        memset(newdata.get() + len, 0xFF, newlen - len);
     return {std::move(newdata), newlen};
 }
 
