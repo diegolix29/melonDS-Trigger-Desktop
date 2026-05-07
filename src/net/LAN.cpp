@@ -705,7 +705,7 @@ void LAN::ProcessDiscovery()
         return;
 
     u32 tick = (u32)Platform::GetMSCount();
-    if ((tick - DiscoveryLastTick) < 500) // Reduced from 1000ms to 500ms for better Pokemon distribution detection
+    if ((tick - DiscoveryLastTick) < 1000)
         return;
 
     DiscoveryLastTick = tick;
@@ -844,7 +844,7 @@ void LAN::ProcessDiscovery()
         for (const auto& [key, data] : DiscoveryList)
         {
             u32 age = tick - data.Magic;
-            if (age < 10000) continue; // Increased from 5000ms to 10000ms for better Pokemon distribution detection
+            if (age < 5000) continue;
 
             deletelist.push_back(key);
         }
