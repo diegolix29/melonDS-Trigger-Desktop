@@ -1607,8 +1607,18 @@ bool Wifi::CheckRX(int type) // 0=regular 1=MP replies 2=MP host frames
         chan = RXBuffer[9];
         if (chan != CurChannel || CurChannel == 0)
         {
-            Log(LogLevel::Debug, "received frame but bad channel %d (expected %d)\n", chan, CurChannel);
-            continue;
+            // For cross-platform compatibility, be more lenient with channel mismatches
+            // Allow frames from nearby channels (common in mobile/desktop communication)
+            // Also allow channel 6 which seems to be commonly used by Android devices
+            if (CurChannel > 0 && (abs(chan - CurChannel) <= 2 || chan == 6))
+            {
+                Log(LogLevel::Debug, "received frame from nearby channel %d (expected %d), allowing for cross-platform compatibility\n", chan, CurChannel);
+            }
+            else
+            {
+                Log(LogLevel::Debug, "received frame but bad channel %d (expected %d)\n", chan, CurChannel);
+                continue;
+            }
         }
 
         // hack: ignore MP frames if not engaged in a MP comm
@@ -1951,9 +1961,27 @@ void Wifi::ChangeChannel()
         }
     }
 
-    // Allow Pokemon distribution ROMs to use their intended channel (usually channel 7)
-    // Removed forced channel 6 restriction to enable distribution ROM detection
-    Log(LogLevel::Debug, "wifi: using channel %d (allowing Pokemon distribution ROM detection)\n", CurChannel);
+    // Force channel to 6 (AP channel) during multiplayer to prevent desynchronization
+    // This fixes the connection issues where host/client are on different channels
+    if (CurChannel != 6)
+    {
+        // Force to channel 6 by using the RF values for channel 6
+        if (RFChannelData[5][0] && RFChannelData[5][1])
+        {
+            RFRegs[RFChannelIndex[0]] = RFChannelData[5][0];
+            RFRegs[RFChannelIndex[1]] = RFChannelData[5][1];
+            CurChannel = 6;
+            Log(LogLevel::Debug, "wifi: forcing to channel 6 for multiplayer synchronization\n");
+        }
+        else
+        {
+            Log(LogLevel::Debug, "wifi: switching to channel %d (multiplayer sync issue)\n", CurChannel);
+        }
+    }
+    else
+    {
+        Log(LogLevel::Debug, "wifi: staying on channel 6 (multiplayer)\n");
+    }
 }
 
 void Wifi::RFTransfer_Type2()
@@ -1970,7 +1998,9 @@ void Wifi::RFTransfer_Type2()
     {
         u32 data = IOPORT(W_RFData1) | ((IOPORT(W_RFData2) & 0x0003) << 16);
         RFRegs[id] = data;
-        // Removed ChangeChannel() call to match 0.9.5 behavior for Pokemon distribution ROM compatibility
+
+        if (id == RFChannelIndex[0] || id == RFChannelIndex[1])
+            ChangeChannel();
     }
 }
 
