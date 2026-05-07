@@ -48,14 +48,59 @@ u8 CartRetailBT::SPITransmitReceive(u8 val)
 {
     //Log(LogLevel::Debug,"POKETYPE SPI: %02X %d %d - %08X\n", val, pos, last, NDS::GetPC(0));
 
-    /*if (pos == 0)
-    {
-        // TODO do something with it??
-        if(val==0xFF)SetIRQ();
-    }
-    if(pos==7)SetIRQ();*/
+    static u8 pos = 0;
+    static u8 cmd = 0;
+    static u8 status = 0x02; // Ready status
 
-    return 0;
+    // First byte is command
+    if (pos == 0)
+    {
+        cmd = val;
+        pos++;
+
+        // If this is a status check command, reset position after response
+        if (val == 0xFF || val == 0x00)
+        {
+            pos = 0;
+            return status;
+        }
+
+        return 0x00; // Acknowledge command
+    }
+
+    // Handle different commands
+    switch (cmd)
+    {
+        case 0x01: // Read status
+            pos = 0;
+            return status;
+
+        case 0x02: // Get device ID
+            if (pos < 4)
+            {
+                pos++;
+                return 0x00; // Return device ID bytes
+            }
+            pos = 0;
+            return 0x00;
+
+        case 0x05: // Data transfer - return success
+            pos = 0;
+            return 0x00;
+
+        case 0x06: // Check connection status
+            pos = 0;
+            return 0x01; // Connected
+
+        default:
+            // Unknown command - return 0 and reset
+            pos = 0;
+            return 0x00;
+    }
+
+    // Reset position if we get here unexpectedly
+    pos = 0;
+    return 0x00;
 }
 
 

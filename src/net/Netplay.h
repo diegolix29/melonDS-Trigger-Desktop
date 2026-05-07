@@ -38,11 +38,17 @@ extern bool Active;
 bool Init();
 void DeInit();
 
-void StartHost(const char* player, int port);
+void StartHost(const char* player, int port, int maxPlayers = 4, int lagFrames = 4, int uploadBandwidth = 0, int downloadBandwidth = 0);
 void StartClient(const char* player, const char* host, int port);
 void StartMirror(const Player* player);
 
 melonDS::u32 PlayerAddress(int id);
+
+// Configuration getter functions
+int GetMaxPlayers();
+int GetLagFrames();
+int GetUploadBandwidth();
+int GetDownloadBandwidth();
 
 void StartGame();
 void StartLocal();

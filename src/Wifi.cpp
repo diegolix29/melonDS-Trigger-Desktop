@@ -1951,10 +1951,9 @@ void Wifi::ChangeChannel()
         }
     }
 
-    if (CurChannel > 0)
-        Log(LogLevel::Debug, "wifi: switching to channel %d\n", CurChannel);
-    else
-        Log(LogLevel::Debug, "wifi: invalid channel values %05X:%05X\n", val1, val2);
+    // Allow Pokemon distribution ROMs to use their intended channel (usually channel 7)
+    // Removed forced channel 6 restriction to enable distribution ROM detection
+    Log(LogLevel::Debug, "wifi: using channel %d (allowing Pokemon distribution ROM detection)\n", CurChannel);
 }
 
 void Wifi::RFTransfer_Type2()
@@ -1971,9 +1970,7 @@ void Wifi::RFTransfer_Type2()
     {
         u32 data = IOPORT(W_RFData1) | ((IOPORT(W_RFData2) & 0x0003) << 16);
         RFRegs[id] = data;
-
-        if (id == RFChannelIndex[0] || id == RFChannelIndex[1])
-            ChangeChannel();
+        // Removed ChangeChannel() call to match 0.9.5 behavior for Pokemon distribution ROM compatibility
     }
 }
 

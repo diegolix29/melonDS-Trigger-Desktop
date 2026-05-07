@@ -72,27 +72,64 @@ public:
         u32 Ping;
     };
 
+    struct RoomInfo
+    {
+        char RoomCode[9];       // 8-char room code + NUL
+        char RoomName[64];      // Human-readable room name
+        char GameName[64];      // Game being played
+        char Description[128];  // Room description
+        char Password[33];       // Room password (32 + NUL), empty if no password
+        u8 NumPlayers;
+        u8 MaxPlayers;
+        u8 HasPassword;         // 1 if password protected
+        u8 InGame;              // 1 if game is running
+        u32 HostID;
+    };
+
     struct DiscoveryData
     {
         u32 Magic;
         u32 Version;
         u32 Tick;
-        char SessionName[64];
-        u8 NumPlayers;
-        u8 MaxPlayers;
-        u8 Status; // 0=idle 1=playing
+        RoomInfo Room;
+    };
+
+    struct ChatMessage
+    {
+        u32 SenderID;
+        char Message[256];
+        u64 Timestamp;
     };
 
     bool StartDiscovery();
     void EndDiscovery();
-    bool StartHost(const char* player, int numplayers);
-    bool StartClient(const char* player, const char* host);
+    bool StartHost(const char* player, int numplayers, const char* roomName, const char* password = nullptr);
+    bool StartClient(const char* player, const char* host, const char* password = nullptr);
     void EndSession();
 
     std::map<u32, DiscoveryData> GetDiscoveryList();
     std::vector<Player> GetPlayerList();
+    RoomInfo GetRoomInfo();
     int GetNumPlayers() { return NumPlayers; }
     int GetMaxPlayers() { return MaxPlayers; }
+
+    // Chat
+    void SendChatMessage(const char* message);
+    std::vector<ChatMessage> GetChatMessages();
+
+    // Moderation (host only)
+    bool KickPlayer(int playerID);
+    bool BanPlayer(int playerID);
+
+    // P2P methods
+    bool ConnectToPeer(int playerID, const char* address);
+    void DisconnectFromPeer(int playerID);
+    void BroadcastPeerList();
+    
+    // Azahar-style broadcast methods
+    void BroadcastNodeMap();
+    void HandleNodeMapPacket(u8* data, int len);
+    void BroadcastPacketToAllClients(u8* data, int len);
 
     void Process() override;
 
@@ -125,6 +162,12 @@ private:
     int MaxPlayers;
     Platform::Mutex* PlayersMutex;
 
+    RoomInfo CurrentRoom;
+    Platform::Mutex* RoomMutex;
+
+    std::vector<ChatMessage> ChatHistory;
+    Platform::Mutex* ChatMutex;
+
     Player MyPlayer;
     u32 HostAddress;
 
@@ -140,6 +183,7 @@ private:
     void ProcessDiscovery();
 
     void HostUpdatePlayerList();
+    void HostUpdateRoomInfo();
     void ClientUpdatePlayerList();
 
     void ProcessHostEvent(ENetEvent& event);
@@ -149,6 +193,8 @@ private:
 
     int SendPacketGeneric(u32 type, u8* packet, int len, u64 timestamp);
     int RecvPacketGeneric(u8* packet, bool block, u64* timestamp);
+
+    bool VerifyPassword(const char* password);
 };
 
 }

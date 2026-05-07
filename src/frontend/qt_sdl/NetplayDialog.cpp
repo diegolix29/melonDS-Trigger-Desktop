@@ -25,6 +25,8 @@
 
 #include <QStandardItemModel>
 #include <QProcess>
+#include <QTimer>
+#include <QApplication>
 
 #include "NDS.h"
 #include "NDSCart.h"
@@ -54,6 +56,9 @@ NetplayStartHostDialog::NetplayStartHostDialog(QWidget* parent) : QDialog(parent
     setAttribute(Qt::WA_DeleteOnClose);
 
     ui->txtPort->setText("8064");
+    
+    // Connect copy button
+    connect(ui->btnCopy, &QPushButton::clicked, this, &NetplayStartHostDialog::copyConnectionString);
 }
 
 NetplayStartHostDialog::~NetplayStartHostDialog()
@@ -73,12 +78,26 @@ void NetplayStartHostDialog::done(int r)
     {
         std::string player = ui->txtPlayerName->text().toStdString();
         int port = ui->txtPort->text().toInt();
+        int maxPlayers = ui->sbMaxPlayers->value();
+        int lagFrames = ui->sbLagFrames->value();
+        int uploadBandwidth = ui->sbUploadBandwidth->value();
+        int downloadBandwidth = ui->sbDownloadBandwidth->value();
 
         // TODO validate input!!
 
         netplayDlg = NetplayDialog::openDlg(parentWidget());
 
-        Netplay::StartHost(player.c_str(), port);
+        Netplay::StartHost(player.c_str(), port, maxPlayers, lagFrames, uploadBandwidth, downloadBandwidth);
+        
+        // Show room information after host starts
+        QString localIP = getLocalIPAddress();
+        ui->txtHostIP->setText(localIP);
+        ui->txtRoomPort->setText(QString::number(port));
+        ui->txtConnectionString->setText(localIP + ":" + QString::number(port));
+        ui->gbRoomInfo->setVisible(true);
+        
+        // Change dialog to not close automatically
+        return; // Don't call QDialog::done(r) yet
     }
 
     QDialog::done(r);
@@ -190,4 +209,33 @@ void NetplayDialog::doUpdatePlayerList(Netplay::Player* players, int num)
         snprintf(ip, sizeof(ip), "%d.%d.%d.%d", addr&0xFF, (addr>>8)&0xFF, (addr>>16)&0xFF, addr>>24);
         model->setItem(i, 4, new QStandardItem(ip));
     }
+}
+
+QString NetplayStartHostDialog::getLocalIPAddress()
+{
+    // Get the first non-loopback IPv4 address
+    const QHostAddress localhost(QHostAddress::LocalHost);
+    for (const QHostAddress &address: QNetworkInterface::allAddresses()) {
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && 
+            address != localhost &&
+            !address.isLoopback()) {
+            return address.toString();
+        }
+    }
+    
+    // Fallback to localhost if no external address found
+    return "127.0.0.1";
+}
+
+void NetplayStartHostDialog::copyConnectionString()
+{
+    QString connectionString = ui->txtConnectionString->text();
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setText(connectionString);
+    
+    // Optionally show a brief feedback
+    ui->btnCopy->setText("Copied!");
+    QTimer::singleShot(1000, [this]() {
+        ui->btnCopy->setText("Copy");
+    });
 }
