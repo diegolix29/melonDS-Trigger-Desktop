@@ -28,6 +28,7 @@
     #define sockaddr_in_t  SOCKADDR_IN
 #else
     #include <unistd.h>
+    #include <arpa/inet.h>
     #include <netinet/in.h>
     #include <sys/select.h>
     #include <sys/socket.h>

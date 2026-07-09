@@ -18,7 +18,6 @@ env:
 jobs:
   build-macos:
     strategy:
-      fail-fast: false
       matrix:
         arch: [x86_64, arm64]
 
@@ -63,7 +62,6 @@ jobs:
           name: macOS-${{ matrix.arch }}
           path: macOS-${{ matrix.arch }}.zip
           retention-days: 1
-          archive: false
       - name: Save vcpkg cache
         uses: actions/cache/save@v4
         with:
@@ -77,17 +75,15 @@ jobs:
     continue-on-error: true
     steps:
       - name: Download x86_64
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
-          name: macOS-x86_64.zip
+          name: macOS-x86_64
           path: x86_64
-          skip-decompress: true
       - name: Download arm64
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
-          name: macOS-arm64.zip
+          name: macOS-arm64
           path: arm64
-          skip-decompress: true
       - name: Combine app bundles
         shell: bash
         run: |
@@ -103,7 +99,6 @@ jobs:
         with:
           name: macOS-universal
           path: macOS-universal.zip
-          archive: false
 #     - name: Clean up architecture-specific artifacts
 #       uses: geekyeggo/delete-artifact@v4
 #       with:

@@ -63,4 +63,3 @@ jobs:
       with:
         name: melonDS-appimage-${{ matrix.arch.name }}
         path: melonDS*.AppImage
-        archive: false
