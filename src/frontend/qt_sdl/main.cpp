@@ -51,6 +51,7 @@
 
 #include "main.h"
 #include "version.h"
+#include "ThemeManager.h"
 
 #include "Config.h"
 
@@ -381,6 +382,18 @@ int main(int argc, char** argv)
         if (!uitheme.isEmpty())
         {
             QApplication::setStyle(uitheme);
+        }
+
+        // Apply color theme
+        QString colorTheme = cfg.GetQString("ColorTheme");
+        ThemeManager& themeManager = ThemeManager::instance();
+        if (!colorTheme.isEmpty())
+        {
+            themeManager.applyTheme(colorTheme);
+        }
+        else
+        {
+            themeManager.applyTheme(ThemeType::Light);
         }
     }
 

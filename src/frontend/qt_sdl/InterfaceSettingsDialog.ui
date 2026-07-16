@@ -34,7 +34,7 @@
         <item>
          <widget class="QLabel" name="label_4">
           <property name="text">
-           <string>Theme</string>
+           <string>Qt Style</string>
           </property>
           <property name="buddy">
            <cstring>cbxUITheme</cstring>
@@ -43,6 +43,23 @@
         </item>
         <item>
          <widget class="QComboBox" name="cbxUITheme"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>Color Theme</string>
+          </property>
+          <property name="buddy">
+           <cstring>cbxColorTheme</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="cbxColorTheme"/>
         </item>
        </layout>
       </item>

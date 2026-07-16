@@ -19,6 +19,7 @@
 #include <QStyleFactory>
 #include "InterfaceSettingsDialog.h"
 #include "ui_InterfaceSettingsDialog.h"
+#include "ThemeManager.h"
 
 #include "types.h"
 #include "Platform.h"
@@ -55,6 +56,20 @@ InterfaceSettingsDialog::InterfaceSettingsDialog(QWidget* parent) : QDialog(pare
         ui->cbxUITheme->addItem(themeKeys[i], themeKeys[i]);
         if (!cfgTheme.isEmpty() && themeKeys[i].compare(currentTheme, Qt::CaseInsensitive) == 0)
             ui->cbxUITheme->setCurrentIndex(i + 1);
+    }
+
+    // Color theme dropdown
+    ThemeManager& themeManager = ThemeManager::instance();
+    QStringList colorThemes = themeManager.getAvailableThemes();
+    QString cfgColorTheme = cfg.GetQString("ColorTheme");
+
+    for (int i = 0; i < colorThemes.length(); i++)
+    {
+        ui->cbxColorTheme->addItem(colorThemes[i], colorThemes[i]);
+        if (!cfgColorTheme.isEmpty() && colorThemes[i].compare(cfgColorTheme, Qt::CaseInsensitive) == 0)
+            ui->cbxColorTheme->setCurrentIndex(i);
+        else if (cfgColorTheme.isEmpty() && colorThemes[i] == "Light")
+            ui->cbxColorTheme->setCurrentIndex(i);
     }
 }
 
@@ -136,12 +151,19 @@ void InterfaceSettingsDialog::done(int r)
         QString themeName = ui->cbxUITheme->currentData().toString();
         cfg.SetQString("UITheme", themeName);
 
+        QString colorThemeName = ui->cbxColorTheme->currentData().toString();
+        cfg.SetQString("ColorTheme", colorThemeName);
+
         Config::Save();
 
         if (!themeName.isEmpty())
             qApp->setStyle(themeName);
         else
             qApp->setStyle(*systemThemeName);
+
+        // Apply color theme
+        ThemeManager& themeManager = ThemeManager::instance();
+        themeManager.applyTheme(colorThemeName);
 
         emit updateInterfaceSettings();
     }
