@@ -47,6 +47,9 @@ set(SOURCES_QT_SDL
     ArchiveUtil.h
     ArchiveUtil.cpp
 
+    GameLibraryPanel.h
+    GameLibraryPanel.cpp
+
     ../ScreenLayout.cpp
     ../mic_blow.h
 

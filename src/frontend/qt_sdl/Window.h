@@ -40,6 +40,7 @@
 
 class EmuInstance;
 class EmuThread;
+class GameLibraryPanel;
 
 const int kMaxRecentROMs = 10;
 
@@ -103,6 +104,7 @@ signals:
 
 private slots:
     void onOpenFile();
+    void onLibraryGameActivated(const QString& path);
     void onClickRecentFile();
     void onClearRecentFiles();
     void onBootFirmware();
@@ -191,7 +193,7 @@ private:
     QStringList currentROM;
     QStringList currentGBAROM;
     QList<QString> recentFileList;
-    QMenu *recentMenu;
+    QMenu* recentMenu;
     void updateRecentFilesMenu();
 
     bool verifySetup();
@@ -224,6 +226,7 @@ private:
 
 public:
     ScreenPanel* panel;
+    GameLibraryPanel* gameLibraryPanel;
 
     bool hasMenu;
 
@@ -294,6 +297,7 @@ public:
     QAction* actShowOSD;
     QAction* actLimitFramerate;
     QAction* actAudioSync;
+    QAction* actGameLibrary;
 
     QAction* actAbout;
 };

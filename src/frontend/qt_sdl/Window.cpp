@@ -58,6 +58,7 @@
 #include "ROMInfoDialog.h"
 #include "RAMInfoDialog.h"
 #include "TitleManagerDialog.h"
+#include "GameLibraryPanel.h"
 #include "PowerManagement/PowerManagementDialog.h"
 
 #include "Platform.h"
@@ -85,10 +86,10 @@ extern bool camStarted[2];
 
 
 QString NdsRomMimeType = "application/x-nintendo-ds-rom";
-QStringList NdsRomExtensions { ".nds", ".srl", ".dsi", ".ids" };
+QStringList NdsRomExtensions{ ".nds", ".srl", ".dsi", ".ids" };
 
 QString GbaRomMimeType = "application/x-gba-rom";
-QStringList GbaRomExtensions { ".gba", ".agb" };
+QStringList GbaRomExtensions{ ".gba", ".agb" };
 
 
 // This list of supported archive formats is based on libarchive(3) version 3.6.2 (2022-12-09).
@@ -138,14 +139,14 @@ static bool FileExtensionInList(const QString& filename, const QStringList& exte
 {
     return std::any_of(extensions.cbegin(), extensions.cend(), [&](const auto& ext) {
         return filename.endsWith(ext, cs);
-    });
+        });
 }
 
 static bool MimeTypeInList(const QMimeType& mimetype, const QStringList& superTypeNames)
 {
     return std::any_of(superTypeNames.cbegin(), superTypeNames.cend(), [&](const auto& superTypeName) {
         return mimetype.inherits(superTypeName);
-    });
+        });
 }
 
 
@@ -213,7 +214,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
     emuInstance(inst),
     globalCfg(inst->globalCfg),
     localCfg(inst->localCfg),
-    windowCfg(localCfg.GetTable("Window"+std::to_string(id), "Window0")),
+    windowCfg(localCfg.GetTable("Window" + std::to_string(id), "Window0")),
     emuThread(inst->getEmuThread()),
     enabledSaved(false),
     focused(true)
@@ -238,9 +239,9 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
     if (hasMenu)
     {
-        QMenuBar * menubar = new QMenuBar();
+        QMenuBar* menubar = new QMenuBar();
         {
-            QMenu * menu = menubar->addMenu("File");
+            QMenu* menu = menubar->addMenu("File");
 
             actOpenROM = menu->addAction("Open ROM...");
             connect(actOpenROM, &QAction::triggered, this, &MainWindow::onOpenFile);
@@ -277,8 +278,8 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             connect(actInsertGBACart, &QAction::triggered, this, &MainWindow::onInsertGBACart);
 
             {
-                QMenu * submenu = menu->addMenu("Insert add-on cart");
-                QAction *act;
+                QMenu* submenu = menu->addMenu("Insert add-on cart");
+                QAction* act;
 
                 int addons[] = {
                     GBAAddon_RAMExpansion,
@@ -313,7 +314,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             menu->addSeparator();
 
             {
-                QMenu * submenu = menu->addMenu("Save state");
+                QMenu* submenu = menu->addMenu("Save state");
 
                 for (int i = 1; i < 9; i++)
                 {
@@ -329,7 +330,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(actSaveState[0], &QAction::triggered, this, &MainWindow::onSaveState);
             }
             {
-                QMenu * submenu = menu->addMenu("Load state");
+                QMenu* submenu = menu->addMenu("Load state");
 
                 for (int i = 1; i < 9; i++)
                 {
@@ -352,9 +353,9 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             menu->addSeparator();
             actOpenConfig = menu->addAction("Open melonDS directory");
             connect(actOpenConfig, &QAction::triggered, this, [&]()
-            {
-                QDesktopServices::openUrl(QUrl::fromLocalFile(emuDirectory));
-            });
+                {
+                    QDesktopServices::openUrl(QUrl::fromLocalFile(emuDirectory));
+                });
 
             menu->addSeparator();
 
@@ -363,7 +364,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actQuit->setShortcut(QKeySequence(QKeySequence::StandardKey::Quit));
         }
         {
-            QMenu * menu = menubar->addMenu("System");
+            QMenu* menu = menubar->addMenu("System");
 
             actPause = menu->addAction("Pause");
             actPause->setCheckable(true);
@@ -411,7 +412,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
 
             {
                 menu->addSeparator();
-                QMenu * submenu = menu->addMenu("Multiplayer");
+                QMenu* submenu = menu->addMenu("Multiplayer");
 
                 actMPNewInstance = submenu->addAction("Launch new instance");
                 connect(actMPNewInstance, &QAction::triggered, this, &MainWindow::onMPNewInstance);
@@ -437,10 +438,10 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             }
         }
         {
-            QMenu * menu = menubar->addMenu("View");
+            QMenu* menu = menubar->addMenu("View");
 
             {
-                QMenu * submenu = menu->addMenu("Screen size");
+                QMenu* submenu = menu->addMenu("Screen size");
 
                 for (int i = 0; i < 4; i++)
                 {
@@ -451,7 +452,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 }
             }
             {
-                QMenu * submenu = menu->addMenu("Screen rotation");
+                QMenu* submenu = menu->addMenu("Screen rotation");
                 grpScreenRotation = new QActionGroup(submenu);
 
                 for (int i = 0; i < screenRot_MAX; i++)
@@ -466,10 +467,10 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(grpScreenRotation, &QActionGroup::triggered, this, &MainWindow::onChangeScreenRotation);
             }
             {
-                QMenu * submenu = menu->addMenu("Screen gap");
+                QMenu* submenu = menu->addMenu("Screen gap");
                 grpScreenGap = new QActionGroup(submenu);
 
-                const int screengap[] = {0, 1, 8, 64, 90, 128};
+                const int screengap[] = { 0, 1, 8, 64, 90, 128 };
 
                 for (int i = 0; i < 6; i++)
                 {
@@ -483,10 +484,10 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(grpScreenGap, &QActionGroup::triggered, this, &MainWindow::onChangeScreenGap);
             }
             {
-                QMenu * submenu = menu->addMenu("Screen layout");
+                QMenu* submenu = menu->addMenu("Screen layout");
                 grpScreenLayout = new QActionGroup(submenu);
 
-                const char *screenlayout[] = {"Natural", "Vertical", "Horizontal", "Hybrid"};
+                const char* screenlayout[] = { "Natural", "Vertical", "Horizontal", "Hybrid" };
 
                 for (int i = 0; i < screenLayout_MAX; i++)
                 {
@@ -505,11 +506,11 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(actScreenSwap, &QAction::triggered, this, &MainWindow::onChangeScreenSwap);
             }
             {
-                QMenu * submenu = menu->addMenu("Screen sizing");
+                QMenu* submenu = menu->addMenu("Screen sizing");
                 grpScreenSizing = new QActionGroup(submenu);
 
-                const char *screensizing[] = {"Even", "Emphasize top", "Emphasize bottom", "Auto", "Top only",
-                                              "Bottom only"};
+                const char* screensizing[] = { "Even", "Emphasize top", "Emphasize bottom", "Auto", "Top only",
+                                              "Bottom only" };
 
                 for (int i = 0; i < screenSizing_MAX; i++)
                 {
@@ -528,16 +529,16 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
                 connect(actIntegerScaling, &QAction::triggered, this, &MainWindow::onChangeIntegerScaling);
             }
             {
-                QMenu * submenu = menu->addMenu("Aspect ratio");
+                QMenu* submenu = menu->addMenu("Aspect ratio");
                 grpScreenAspectTop = new QActionGroup(submenu);
                 grpScreenAspectBot = new QActionGroup(submenu);
-                actScreenAspectTop = new QAction *[AspectRatiosNum];
-                actScreenAspectBot = new QAction *[AspectRatiosNum];
+                actScreenAspectTop = new QAction * [AspectRatiosNum];
+                actScreenAspectBot = new QAction * [AspectRatiosNum];
 
                 for (int i = 0; i < 2; i++)
                 {
-                    QActionGroup * group = grpScreenAspectTop;
-                    QAction **actions = actScreenAspectTop;
+                    QActionGroup* group = grpScreenAspectTop;
+                    QAction** actions = actScreenAspectTop;
 
                     if (i == 1)
                     {
@@ -574,9 +575,14 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             actShowOSD = menu->addAction("Show OSD");
             actShowOSD->setCheckable(true);
             connect(actShowOSD, &QAction::triggered, this, &MainWindow::onChangeShowOSD);
+
+            menu->addSeparator();
+
+            actGameLibrary = menu->addAction("Game library");
+            actGameLibrary->setCheckable(true);
         }
         {
-            QMenu * menu = menubar->addMenu("Config");
+            QMenu* menu = menubar->addMenu("Config");
 
             actEmuSettings = menu->addAction("Emu settings");
             connect(actEmuSettings, &QAction::triggered, this, &MainWindow::onOpenEmuSettings);
@@ -625,13 +631,13 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
             connect(actAudioSync, &QAction::triggered, this, &MainWindow::onChangeAudioSync);
         }
         {
-            QMenu * menu = menubar->addMenu("Help");
+            QMenu* menu = menubar->addMenu("Help");
             actAbout = menu->addAction("About...");
             connect(actAbout, &QAction::triggered, this, [&]
-            {
-                auto dialog = AboutDialog(this);
-                dialog.exec();
-            });
+                {
+                    auto dialog = AboutDialog(this);
+                    dialog.exec();
+                });
         }
 
         setMenuBar(menubar);
@@ -662,6 +668,21 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
     panel = nullptr;
     createScreenPanel();
 
+    gameLibraryPanel = nullptr;
+    if (hasMenu)
+    {
+        gameLibraryPanel = new GameLibraryPanel(globalCfg, this);
+        addDockWidget(Qt::RightDockWidgetArea, gameLibraryPanel);
+
+        connect(gameLibraryPanel, &GameLibraryPanel::gameActivated, this, &MainWindow::onLibraryGameActivated);
+        connect(actGameLibrary, &QAction::triggered, gameLibraryPanel, &GameLibraryPanel::setVisible);
+        connect(gameLibraryPanel, &QDockWidget::visibilityChanged, actGameLibrary, &QAction::setChecked);
+
+        bool showLibrary = globalCfg.GetBool("GameLibrary.Visible");
+        gameLibraryPanel->setVisible(showLibrary);
+        actGameLibrary->setChecked(showLibrary);
+    }
+
     if (hasMenu)
     {
         actEjectCart->setEnabled(false);
@@ -670,7 +691,7 @@ MainWindow::MainWindow(int id, EmuInstance* inst, QWidget* parent) :
         if (globalCfg.GetInt("Emu.ConsoleType") == 1)
         {
             actInsertGBACart->setEnabled(false);
-            for (auto act: actInsertGBAAddon)
+            for (auto act : actInsertGBAAddon)
                 act->setEnabled(false);
         }
 
@@ -789,7 +810,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
 
     // explicitly close children windows, so the OpenGL contexts get closed properly
-    auto childwins = findChildren<MainWindow *>(nullptr, Qt::FindDirectChildrenOnly);
+    auto childwins = findChildren<MainWindow*>(nullptr, Qt::FindDirectChildrenOnly);
     for (auto child : childwins)
         child->close();
 
@@ -798,6 +819,10 @@ void MainWindow::closeEvent(QCloseEvent* event)
     QByteArray geom = saveGeometry();
     QByteArray enc = geom.toBase64(QByteArray::Base64Encoding);
     windowCfg.SetString("Geometry", enc.toStdString());
+
+    if (gameLibraryPanel)
+        globalCfg.SetBool("GameLibrary.Visible", gameLibraryPanel->isVisible());
+
     Config::Save();
 
     emuInstance->deleteWindow(windowID, false);
@@ -815,7 +840,7 @@ void MainWindow::createScreenPanel()
     if (oldpanel) delete oldpanel;
 
     hasOGL = globalCfg.GetBool("Screen.UseGL") ||
-            (globalCfg.GetInt("3D.Renderer") != renderer3D_Software);
+        (globalCfg.GetInt("3D.Renderer") != renderer3D_Software);
 
     if (hasOGL)
     {
@@ -1055,8 +1080,8 @@ bool MainWindow::verifySetup()
     QString res = emuInstance->verifySetup();
     if (!res.isEmpty())
     {
-         QMessageBox::critical(this, "melonDS", res);
-         return false;
+        QMessageBox::critical(this, "melonDS", res);
+        return false;
     }
 
     return true;
@@ -1198,15 +1223,15 @@ QString MainWindow::pickFileFromArchive(QString archiveFileName)
 
     archiveROMList.removeFirst();
 
-    const auto notSupportedRom = [&](const auto& filename){
+    const auto notSupportedRom = [&](const auto& filename) {
         if (NdsRomByExtension(filename) || GbaRomByExtension(filename))
             return false;
         const QMimeType mimetype = QMimeDatabase().mimeTypeForFile(filename, QMimeDatabase::MatchExtension);
         return !(NdsRomByMimetype(mimetype) || GbaRomByMimetype(mimetype));
-    };
+        };
 
     archiveROMList.erase(std::remove_if(archiveROMList.begin(), archiveROMList.end(), notSupportedRom),
-                         archiveROMList.end());
+        archiveROMList.end());
 
     if (archiveROMList.isEmpty())
     {
@@ -1281,11 +1306,11 @@ void MainWindow::updateCartInserted(bool gba)
         label = "GBA slot: " + emuInstance->gbaCartLabel();
 
         emuInstance->doOnAllWindows([=](MainWindow* win)
-        {
-            if (!win->hasMenu) return;
-            win->actCurrentGBACart->setText(label);
-            win->actEjectGBACart->setEnabled(inserted);
-        });
+            {
+                if (!win->hasMenu) return;
+                win->actCurrentGBACart->setText(label);
+                win->actEjectGBACart->setEnabled(inserted);
+            });
     }
     else
     {
@@ -1293,17 +1318,41 @@ void MainWindow::updateCartInserted(bool gba)
         label = "DS slot: " + emuInstance->cartLabel();
 
         emuInstance->doOnAllWindows([=](MainWindow* win)
-        {
-            if (!win->hasMenu) return;
-            win->actCurrentCart->setText(label);
-            win->actEjectCart->setEnabled(inserted);
-            win->actImportSavefile->setEnabled(inserted);
-            win->actEnableCheats->setEnabled(inserted);
-            win->actSetupCheats->setEnabled(inserted);
-            win->actROMInfo->setEnabled(inserted);
-            win->actRAMInfo->setEnabled(inserted);
-        });
+            {
+                if (!win->hasMenu) return;
+                win->actCurrentCart->setText(label);
+                win->actEjectCart->setEnabled(inserted);
+                win->actImportSavefile->setEnabled(inserted);
+                win->actEnableCheats->setEnabled(inserted);
+                win->actSetupCheats->setEnabled(inserted);
+                win->actROMInfo->setEnabled(inserted);
+                win->actRAMInfo->setEnabled(inserted);
+            });
     }
+}
+
+void MainWindow::onLibraryGameActivated(const QString& path)
+{
+    if (!verifySetup())
+        return;
+
+    QStringList file = splitArchivePath(path, false);
+    if (file.isEmpty())
+        return;
+
+    QString errorstr;
+    if (!emuThread->bootROM(file, errorstr))
+    {
+        QMessageBox::critical(this, "melonDS", errorstr);
+        return;
+    }
+
+    QString filename = file.join('|');
+    recentFileList.removeAll(filename);
+    recentFileList.prepend(filename);
+    updateRecentFilesMenu();
+
+    updateCartInserted(false);
 }
 
 void MainWindow::onOpenFile()
@@ -1344,7 +1393,7 @@ void MainWindow::loadRecentFilesMenu(bool loadcfg)
         recentFileList.clear();
 
         Config::Array recentROMs = globalCfg.GetArray("RecentROM");
-        int numrecent = std::min(kMaxRecentROMs, (int) recentROMs.Size());
+        int numrecent = std::min(kMaxRecentROMs, (int)recentROMs.Size());
         for (int i = 0; i < numrecent; ++i)
         {
             std::string item = recentROMs.GetString(i);
@@ -1367,21 +1416,21 @@ void MainWindow::loadRecentFilesMenu(bool loadcfg)
         {
             int cut_start = 0;
             while (item_full[cut_start] != '/' && item_full[cut_start] != '\\' &&
-                   cut_start < itemlen)
+                cut_start < itemlen)
                 cut_start++;
 
-            int cut_end = itemlen-1;
+            int cut_end = itemlen - 1;
             while (((item_full[cut_end] != '/' && item_full[cut_end] != '\\') ||
-                    (cut_start+4+(itemlen-cut_end) < maxlen)) &&
-                   cut_end > 0)
+                (cut_start + 4 + (itemlen - cut_end) < maxlen)) &&
+                cut_end > 0)
                 cut_end--;
 
-            item_display.truncate(cut_start+1);
+            item_display.truncate(cut_start + 1);
             item_display += "...";
             item_display += QString(item_full).remove(0, cut_end);
         }
 
-        QAction *actRecentFile_i = recentMenu->addAction(QString("%1.  %2").arg(i+1).arg(item_display));
+        QAction* actRecentFile_i = recentMenu->addAction(QString("%1.  %2").arg(i + 1).arg(item_display));
         actRecentFile_i->setData(item_full);
         connect(actRecentFile_i, &QAction::triggered, this, &MainWindow::onClickRecentFile);
     }
@@ -1391,7 +1440,7 @@ void MainWindow::loadRecentFilesMenu(bool loadcfg)
 
     recentMenu->addSeparator();
 
-    QAction *actClearRecentList = recentMenu->addAction("Clear");
+    QAction* actClearRecentList = recentMenu->addAction("Clear");
     connect(actClearRecentList, &QAction::triggered, this, &MainWindow::onClearRecentFiles);
 
     if (recentFileList.empty())
@@ -1418,7 +1467,7 @@ void MainWindow::updateRecentFilesMenu()
 
 void MainWindow::onClickRecentFile()
 {
-    QAction *act = (QAction *)sender();
+    QAction* act = (QAction*)sender();
     QString filename = act->data().toString();
 
     if (!verifySetup())
@@ -1528,9 +1577,9 @@ void MainWindow::onSaveState()
         // TODO: specific 'last directory' for savestate files?
         emuThread->emuPause();
         filename = QFileDialog::getSaveFileName(this,
-                                                         "Save state",
-                                                         globalCfg.GetQString("LastROMFolder"),
-                                                         "melonDS savestates (*.mln);;Any file (*.*)");
+            "Save state",
+            globalCfg.GetQString("LastROMFolder"),
+            "melonDS savestates (*.mln);;Any file (*.*)");
         emuThread->emuUnpause();
         if (filename.isEmpty())
             return;
@@ -1563,9 +1612,9 @@ void MainWindow::onLoadState()
         // TODO: specific 'last directory' for savestate files?
         emuThread->emuPause();
         filename = QFileDialog::getOpenFileName(this,
-                                                         "Load state",
-                                                         globalCfg.GetQString("LastROMFolder"),
-                                                         "melonDS savestates (*.ml*);;Any file (*.*)");
+            "Load state",
+            globalCfg.GetQString("LastROMFolder"),
+            "melonDS savestates (*.ml*);;Any file (*.*)");
         emuThread->emuUnpause();
         if (filename.isEmpty())
             return;
@@ -1602,9 +1651,9 @@ void MainWindow::onUndoStateLoad()
 void MainWindow::onImportSavefile()
 {
     QString path = QFileDialog::getOpenFileName(this,
-                                            "Select savefile",
-                                            globalCfg.GetQString("LastROMFolder"),
-                                            "Savefiles (*.sav *.bin *.dsv);;Any file (*.*)");
+        "Select savefile",
+        globalCfg.GetQString("LastROMFolder"),
+        "Savefiles (*.sav *.bin *.dsv);;Any file (*.*)");
 
     if (path.isEmpty())
         return;
@@ -1618,9 +1667,9 @@ void MainWindow::onImportSavefile()
     if (emuThread->emuIsActive())
     {
         if (QMessageBox::warning(this,
-                        "melonDS",
-                        "The emulation will be reset and the current savefile overwritten.",
-                        QMessageBox::Ok, QMessageBox::Cancel) != QMessageBox::Ok)
+            "melonDS",
+            "The emulation will be reset and the current savefile overwritten.",
+            QMessageBox::Ok, QMessageBox::Cancel) != QMessageBox::Ok)
         {
             return;
         }
@@ -1701,9 +1750,9 @@ void MainWindow::onEnableCheats(bool checked)
     emuThread->enableCheats(checked);
 
     emuInstance->doOnAllWindows([=](MainWindow* win)
-    {
-        win->actEnableCheats->setChecked(checked);
-    }, windowID);
+        {
+            win->actEnableCheats->setChecked(checked);
+        }, windowID);
 }
 
 void MainWindow::onSetupCheats()
@@ -1793,10 +1842,10 @@ bool MainWindow::lanWarning(bool host)
 
     QString verb = host ? "host" : "join";
     QString msg = "Multiple emulator instances are currently open.\n"
-            "If you "+verb+" a LAN game now, all secondary instances will be closed.\n\n"
-            "Do you wish to continue?";
+        "If you " + verb + " a LAN game now, all secondary instances will be closed.\n\n"
+        "Do you wish to continue?";
 
-    auto res = QMessageBox::warning(this, "melonDS", msg, QMessageBox::Yes|QMessageBox::No, QMessageBox::No);
+    auto res = QMessageBox::warning(this, "melonDS", msg, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (res == QMessageBox::No)
         return false;
 
@@ -1996,7 +2045,7 @@ void MainWindow::onUpdateInterfaceSettings()
     emuInstance->fastForwardFPS = globalCfg.GetDouble("FastForwardFPS");
     emuInstance->slowmoFPS = globalCfg.GetDouble("SlowmoFPS");
     panel->setMouseHide(globalCfg.GetBool("Mouse.Hide"),
-                        globalCfg.GetInt("Mouse.HideSeconds")*1000);
+        globalCfg.GetInt("Mouse.HideSeconds") * 1000);
 }
 
 void MainWindow::onInterfaceSettingsFinished(int res)
@@ -2134,19 +2183,19 @@ void MainWindow::onTitleUpdate(QString title)
     if ((numinst > 1) && (numwin > 1))
     {
         // add player/window prefix
-        QString prefix = QString("[p%1:w%2] ").arg(emuInstance->instanceID+1).arg(windowID+1);
+        QString prefix = QString("[p%1:w%2] ").arg(emuInstance->instanceID + 1).arg(windowID + 1);
         title = prefix + title;
     }
     else if (numinst > 1)
     {
         // add player prefix
-        QString prefix = QString("[p%1] ").arg(emuInstance->instanceID+1);
+        QString prefix = QString("[p%1] ").arg(emuInstance->instanceID + 1);
         title = prefix + title;
     }
     else if (numwin > 1)
     {
         // add window prefix
-        QString prefix = QString("[w%1] ").arg(windowID+1);
+        QString prefix = QString("[w%1] ").arg(windowID + 1);
         title = prefix + title;
     }
 
@@ -2270,7 +2319,7 @@ void MainWindow::onUpdateVideoSettings(bool glchange)
     if (parentwin)
         return parentwin->onUpdateVideoSettings(glchange);
 
-    auto childwins = findChildren<MainWindow *>(nullptr);
+    auto childwins = findChildren<MainWindow*>(nullptr);
 
     bool hadOGL = hasOGL;
     if (glchange)
@@ -2279,7 +2328,7 @@ void MainWindow::onUpdateVideoSettings(bool glchange)
         if (hadOGL)
         {
             emuThread->deinitContext(windowID);
-            for (auto child: childwins)
+            for (auto child : childwins)
             {
                 auto thread = child->getEmuInstance()->getEmuThread();
                 thread->deinitContext(child->windowID);
@@ -2287,14 +2336,14 @@ void MainWindow::onUpdateVideoSettings(bool glchange)
         }
 
         createScreenPanel();
-        for (auto child: childwins)
+        for (auto child : childwins)
         {
             child->createScreenPanel();
         }
     }
 
     emuThread->updateVideoSettings();
-    for (auto child: childwins)
+    for (auto child : childwins)
     {
         // child windows may belong to a different instance
         // in that case we need to signal their thread appropriately
@@ -2305,10 +2354,10 @@ void MainWindow::onUpdateVideoSettings(bool glchange)
 
     if (glchange)
     {
-        if (hasOGL) 
+        if (hasOGL)
         {
             emuThread->initContext(windowID);
-            for (auto child: childwins)
+            for (auto child : childwins)
             {
                 auto thread = child->getEmuInstance()->getEmuThread();
                 thread->initContext(child->windowID);
