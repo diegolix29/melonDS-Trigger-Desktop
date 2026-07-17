@@ -151,7 +151,6 @@ jobs:
         with:
           name: macOS-${{ matrix.arch }}
           path: macOS-${{ matrix.arch }}.zip
-          retention-days: 1
       - name: Save vcpkg cache
         uses: actions/cache/save@v4
         with:
@@ -280,11 +279,69 @@ jobs:
         with:
           path: artifacts
 
+      - name: Flatten and rename artifacts
+        run: |
+          mkdir -p release
+          
+          # Windows artifacts
+          find artifacts/melonDS-windows-* -type f -exec cp {} release/ \;
+          cd release
+          for f in melonDS-windows-*; do
+            if [ -f "$f" ]; then
+              mv "$f" "melonDS-${f#melonDS-}.exe"
+            fi
+          done
+          cd ..
+          
+          # Ubuntu AppImage artifacts
+          find artifacts/melonDS-appimage-* -type f -name "*.AppImage" -exec cp {} release/ \;
+          cd release
+          for f in melonDS-appimage-*.AppImage; do
+            if [ -f "$f" ]; then
+              newname="${f#melonDS-appimage-}"
+              newname="melonDS-${newname%.AppImage}.AppImage"
+              mv "$f" "$newname"
+            fi
+          done
+          cd ..
+          
+          # Ubuntu binary artifacts
+          find artifacts/melonDS-ubuntu-* -type f ! -name "*.AppImage" -exec cp {} release/ \;
+          cd release
+          for f in melonDS-ubuntu-*; do
+            if [ -f "$f" ]; then
+              mv "$f" "melonDS-${f#melonDS-}"
+            fi
+          done
+          cd ..
+          
+          # macOS artifacts
+          find artifacts/macOS-* -type f -name "*.zip" -exec cp {} release/ \;
+          cd release
+          for f in macOS-*.zip; do
+            if [ -f "$f" ]; then
+              mv "$f" "melonDS-${f#macOS-}"
+            fi
+          done
+          cd ..
+          
+          # BSD artifacts
+          find artifacts/melonDS-*bsd-* -type f -exec cp {} release/ \;
+          cd release
+          for f in melonDS-*bsd-*; do
+            if [ -f "$f" ]; then
+              mv "$f" "melonDS-${f#melonDS-}"
+            fi
+          done
+          cd ..
+          
+          echo "Release files:"
+          ls -la release/
+
       - name: Check for required artifacts
         run: |
           echo "Checking for required artifacts..."
-          ls -R artifacts
-          if [ ! -d "artifacts" ] || [ -z "$(ls -A artifacts)" ]; then
+          if [ ! -d "release" ] || [ -z "$(ls -A release)" ]; then
             echo "No artifacts found, skipping release"
             exit 1
           fi
@@ -303,7 +360,7 @@ jobs:
           name: melonDS Release ${{ steps.tag.outputs.tag }}
           draft: false
           prerelease: false
-          files: artifacts/**/*
+          files: release/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
