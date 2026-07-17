@@ -151,7 +151,6 @@ jobs:
         with:
           name: macOS-${{ matrix.arch }}
           path: macOS-${{ matrix.arch }}.zip
-          retention-days: 1
       - name: Save vcpkg cache
         uses: actions/cache/save@v4
         with:
@@ -193,7 +192,7 @@ jobs:
   build-bsd:
     strategy:
       matrix:
-        os: [freebsd, netbsd, openbsd]
+        os: [freebsd, openbsd]
         arch: [x86_64]
         include:
           - os: freebsd
@@ -202,20 +201,6 @@ jobs:
               pkg install -y cmake kf6-extra-cmake-modules pkgconf ninja
               qt6-base qt6-multimedia qt6-svg sdl2 libarchive zstd enet
               faad2
-
-          - os: netbsd
-            os_name: NetBSD
-            prepare_vm: |
-              /usr/sbin/pkg_add pkgin curl
-              mach=$(uname -m | sed "s/evbarm/evbarm-$(uname -p)/")
-              for set in xbase xcomp; do
-                curl -sL ${PKG_PATH%%/pkgsrc*}/NetBSD/NetBSD-$(uname -r
-                  )/$mach/binary/sets/$set.tar.xz | tar xJpf - -C /
-              done
-            install_deps: >
-              pkgin -y install cmake extra-cmake-modules pkgconf
-              ninja-build qt6-qtbase qt6-qtmultimedia qt6-qtsvg SDL2
-              libarchive zstd enet faad2
 
           - os: openbsd
             os_name: OpenBSD
@@ -269,7 +254,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: [build-windows, build-ubuntu, build-macos-universal, build-bsd]
+    needs: [build-windows, build-ubuntu, build-macos, build-macos-universal, build-bsd]
     if: github.event_name == 'push' && github.ref == 'refs/heads/TriggerDS'
     runs-on: ubuntu-latest
     permissions:
@@ -279,15 +264,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Check for required artifacts
-        run: |
-          echo "Checking for required artifacts..."
-          ls -R artifacts
-          if [ ! -d "artifacts" ] || [ -z "$(ls -A artifacts)" ]; then
-            echo "No artifacts found, skipping release"
-            exit 1
-          fi
 
       - name: Generate release tag
         id: tag
