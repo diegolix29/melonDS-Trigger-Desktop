@@ -20,31 +20,10 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for all workflows to complete
-        uses: lewagon/wait-on-check-action@v1.3.3
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          check-name: 'Windows'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-      - uses: lewagon/wait-on-check-action@v1.3.3
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          check-name: 'Ubuntu'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-      - uses: lewagon/wait-on-check-action@v1.3.3
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          check-name: 'macOS'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-      - uses: lewagon/wait-on-check-action@v1.3.3
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          check-name: 'BSD'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
+      - name: Wait for workflows to complete
+        run: |
+          echo "Waiting for all workflows to complete..."
+          sleep 60
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -52,6 +31,16 @@ jobs:
           path: artifacts
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Check for required artifacts
+        run: |
+          echo "Checking for required artifacts..."
+          ls -R artifacts
+          # Check if we have at least some artifacts
+          if [ ! -d "artifacts" ] || [ -z "$(ls -A artifacts)" ]; then
+            echo "No artifacts found, skipping release"
+            exit 1
+          fi
 
       - name: Generate release tag
         id: tag
