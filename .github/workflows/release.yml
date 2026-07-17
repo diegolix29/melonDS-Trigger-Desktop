@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - Windows
+      - Ubuntu
+      - macOS
+      - BSD
+    types:
+      - completed
+    branches:
+      - TriggerDS
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for all workflows to complete
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          check-name: 'Windows'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+      - uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          check-name: 'Ubuntu'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+      - uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          check-name: 'macOS'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+      - uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          check-name: 'BSD'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Generate release tag
+        id: tag
+        run: |
+          TAG_NAME="release-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Generated tag: ${TAG_NAME}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: melonDS Release ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: artifacts/**/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

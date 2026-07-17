@@ -44,10 +44,11 @@ jobs:
                 curl -sL ${PKG_PATH%%/pkgsrc*}/NetBSD/NetBSD-$(uname -r
                   )/$mach/binary/sets/$set.tar.xz | tar xJpf - -C /
               done
-            install_deps: >
-              pkgin -y install cmake extra-cmake-modules pkgconf
-              ninja-build qt6-qtbase qt6-qtmultimedia qt6-qtsvg SDL2
-              libarchive zstd enet faad2
+            install_deps: |
+              # Configure pkgin to use alternative mirrors since cdn.netbsd.org is often unavailable
+              sed -i.bak 's|https://cdn.netbsd.org|https://ftp.netbsd.org|' /usr/pkg/etc/pkgin/repositories.conf || true
+              pkgin -y update || pkgin -y update
+              pkgin -y install cmake extra-cmake-modules pkgconf ninja-build qt6-qtbase qt6-qtmultimedia qt6-qtsvg SDL2 libarchive zstd enet faad2
 
           - os: openbsd
             os_name: OpenBSD
