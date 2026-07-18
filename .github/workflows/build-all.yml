@@ -279,64 +279,26 @@ jobs:
         with:
           path: artifacts
 
-      - name: Flatten and rename artifacts
+      - name: Debug artifact structure
+        run: |
+          echo "=== Contents of artifacts directory after download ==="
+          ls -R artifacts
+          echo "=== Full artifact file paths ==="
+          find artifacts -type f
+          echo "=== Count of files in artifacts ==="
+          find artifacts -type f | wc -l
+
+      - name: Flatten artifacts
         run: |
           mkdir -p release
           
-          # Windows artifacts
-          find artifacts/melonDS-windows-* -type f -exec cp {} release/ \;
-          cd release
-          for f in melonDS-windows-*; do
-            if [ -f "$f" ]; then
-              mv "$f" "melonDS-${f#melonDS-}.exe"
-            fi
-          done
-          cd ..
+          # Copy all files from all artifact subdirectories to the release folder
+          find artifacts -type f -exec cp {} release/ \;
           
-          # Ubuntu AppImage artifacts
-          find artifacts/melonDS-appimage-* -type f -name "*.AppImage" -exec cp {} release/ \;
-          cd release
-          for f in melonDS-appimage-*.AppImage; do
-            if [ -f "$f" ]; then
-              newname="${f#melonDS-appimage-}"
-              newname="melonDS-${newname%.AppImage}.AppImage"
-              mv "$f" "$newname"
-            fi
-          done
-          cd ..
-          
-          # Ubuntu binary artifacts
-          find artifacts/melonDS-ubuntu-* -type f ! -name "*.AppImage" -exec cp {} release/ \;
-          cd release
-          for f in melonDS-ubuntu-*; do
-            if [ -f "$f" ]; then
-              mv "$f" "melonDS-${f#melonDS-}"
-            fi
-          done
-          cd ..
-          
-          # macOS artifacts
-          find artifacts/macOS-* -type f -name "*.zip" -exec cp {} release/ \;
-          cd release
-          for f in macOS-*.zip; do
-            if [ -f "$f" ]; then
-              mv "$f" "melonDS-${f#macOS-}"
-            fi
-          done
-          cd ..
-          
-          # BSD artifacts
-          find artifacts/melonDS-*bsd-* -type f -exec cp {} release/ \;
-          cd release
-          for f in melonDS-*bsd-*; do
-            if [ -f "$f" ]; then
-              mv "$f" "melonDS-${f#melonDS-}"
-            fi
-          done
-          cd ..
-          
-          echo "Release files:"
+          echo "=== Contents of release directory after flattening ==="
           ls -la release/
+          echo "=== File count in release directory ==="
+          find release -type f | wc -l
 
       - name: Check for required artifacts
         run: |
