@@ -43,6 +43,7 @@
     #define INVALID_SOCKET  (socket_t)-1
 #endif
 
+#include <cstddef>
 #include "LAN.h"
 
 
@@ -222,17 +223,41 @@ void LAN::SendChatMessage(const char* message)
     enet_host_broadcast(Host, Chan_Chat, enetpkt);
     enet_host_flush(Host); // Flush immediately to send chat message
 
-    // Add to local chat history
-    Platform::Mutex_Lock(ChatMutex);
+    PushChat(MyPlayer.ID, message);
+}
+
+void LAN::PushChat(u32 senderID, const char* text)
+{
     ChatMessage msg;
-    msg.SenderID = MyPlayer.ID;
-    strncpy(msg.Message, message, 255);
+    memset(&msg, 0, sizeof(msg));
+    msg.SenderID = senderID;
+    strncpy(msg.Message, text, 255);
     msg.Timestamp = (u64)Platform::GetMSCount();
+
+    Platform::Mutex_Lock(PlayersMutex);
+    if (senderID < 16 && Players[senderID].Status != Player_None)
+        strncpy(msg.SenderName, Players[senderID].Name, 31);
+    else if (senderID == (u32)MyPlayer.ID)
+        strncpy(msg.SenderName, MyPlayer.Name, 31);
+    Platform::Mutex_Unlock(PlayersMutex);
+
+    Platform::Mutex_Lock(ChatMutex);
     ChatHistory.push_back(msg);
-    // Keep last 100 messages
-    if (ChatHistory.size() > 100)
+    if (ChatHistory.size() > 100) // keep the last 100 messages
         ChatHistory.erase(ChatHistory.begin());
+    ChatTotal++;
     Platform::Mutex_Unlock(ChatMutex);
+}
+
+void LAN::SetRoomGame(const char* game, bool inGame)
+{
+    if (!IsHosting()) return;
+    Platform::Mutex_Lock(RoomMutex);
+    memset(CurrentRoom.GameName, 0, sizeof(CurrentRoom.GameName));
+    if (game) strncpy(CurrentRoom.GameName, game, sizeof(CurrentRoom.GameName)-1);
+    CurrentRoom.InGame = inGame ? 1 : 0;
+    Platform::Mutex_Unlock(RoomMutex);
+    HostUpdateRoomInfo(); // beacons pick the change up on their own
 }
 
 std::vector<LAN::ChatMessage> LAN::GetChatMessages()
@@ -268,6 +293,8 @@ bool LAN::KickPlayer(int playerID)
     if (RemotePeers[playerID])
     {
         enet_peer_send(RemotePeers[playerID], Chan_Cmd, enetpkt);
+        // clients don't act on the kick packet themselves: drop them once it is out
+        enet_peer_disconnect_later(RemotePeers[playerID], 0);
         return true;
     }
 
@@ -476,8 +503,9 @@ bool LAN::StartHost(const char* playername, int numplayers, const char* roomName
     memset(&CurrentRoom, 0, sizeof(CurrentRoom));
     GenerateRoomCode(CurrentRoom.RoomCode);
     strncpy(CurrentRoom.RoomName, roomName ? roomName : playername, 63);
-    strncpy(CurrentRoom.GameName, "Nintendo DS", 63);
-    strncpy(CurrentRoom.Description, "", 127);
+    // GameName stays empty until the host starts a game (SetRoomGame);
+    // Description carries the host's name so browsers can show who hosts.
+    strncpy(CurrentRoom.Description, playername, 31);
     if (password && strlen(password) > 0)
     {
         strncpy(CurrentRoom.Password, password, 32);
@@ -626,6 +654,11 @@ bool LAN::StartClient(const char* playername, const char* host, const char* pass
                     ENetPacket* pkt = enet_packet_create(cmd, 41 + sizeof(Player), ENET_PACKET_FLAG_RELIABLE);
                     enet_peer_send(event.peer, Chan_Cmd, pkt);
                     enet_host_flush(Host);
+
+                    // wait for the host to accept (or reject: wrong password, room full)
+                    conn = 3;
+                    enet_packet_destroy(event.packet);
+                    continue;
                 }
                 else
                 {
@@ -638,6 +671,36 @@ bool LAN::StartClient(const char* playername, const char* host, const char* pass
 
                 conn = 2;
                 break;
+            }
+            else if (conn == 3 && event.type == ENET_EVENT_TYPE_RECEIVE)
+            {
+                u8* data = event.packet->data;
+                bool done = false;
+                if (event.channelID == Chan_Cmd && event.packet->dataLength >= 1)
+                {
+                    if (data[0] == Cmd_RoomJoinAccept && event.packet->dataLength == (1+sizeof(RoomInfo)))
+                    {
+                        Platform::Mutex_Lock(RoomMutex);
+                        memcpy(&CurrentRoom, &data[1], sizeof(RoomInfo));
+                        CurrentRoom.RoomCode[sizeof(CurrentRoom.RoomCode)-1] = '\0';
+                        CurrentRoom.RoomName[sizeof(CurrentRoom.RoomName)-1] = '\0';
+                        CurrentRoom.GameName[sizeof(CurrentRoom.GameName)-1] = '\0';
+                        CurrentRoom.Description[sizeof(CurrentRoom.Description)-1] = '\0';
+                        CurrentRoom.Password[0] = '\0';
+                        Platform::Mutex_Unlock(RoomMutex);
+                        Platform::Log(Platform::LogLevel::Info, "LAN: host accepted the join\n");
+                        conn = 2;
+                        done = true;
+                    }
+                    else if (data[0] == Cmd_RoomJoinReject)
+                    {
+                        Platform::Log(Platform::LogLevel::Error, "LAN: host rejected the join (wrong password or room full)\n");
+                        conn = 0;
+                        done = true;
+                    }
+                }
+                enet_packet_destroy(event.packet);
+                if (done) break;
             }
             else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
             {
@@ -697,6 +760,16 @@ void LAN::EndSession()
     enet_host_destroy(Host);
     Host = nullptr;
     IsHost = false;
+
+    // forget the old room, so the lobby doesn't show it as still joined
+    Platform::Mutex_Lock(PlayersMutex);
+    NumPlayers = 0;
+    memset(Players, 0, sizeof(Players));
+    Platform::Mutex_Unlock(PlayersMutex);
+    Platform::Mutex_Lock(ChatMutex);
+    ChatHistory.clear();
+    ChatTotal = 0;
+    Platform::Mutex_Unlock(ChatMutex);
 }
 
 
@@ -748,9 +821,10 @@ void LAN::ProcessDiscovery()
         // Send broadcast for standard LAN discovery
         sendto(DiscoverySocket, (const char*)&legacyBeacon, sizeof(legacyBeacon), 0, (const sockaddr_t*)&saddr, sizeof(saddr));
         
-        // Also send to local subnet for cross-platform compatibility (mobile/desktop)
-        saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-        sendto(DiscoverySocket, (const char*)&legacyBeacon, sizeof(legacyBeacon), 0, (const sockaddr_t*)&saddr, sizeof(saddr));
+        // Also send to this machine, so other instances on the same PC/phone see the room
+        sockaddr_in_t laddr = saddr;
+        laddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        sendto(DiscoverySocket, (const char*)&legacyBeacon, sizeof(legacyBeacon), 0, (const sockaddr_t*)&laddr, sizeof(laddr));
 
         // New format for Android clients
         DiscoveryData newBeacon;
@@ -764,8 +838,12 @@ void LAN::ProcessDiscovery()
         newBeacon.Room.NumPlayers = NumPlayers;
         newBeacon.Room.MaxPlayers = MaxPlayers;
         Platform::Mutex_Unlock(RoomMutex);
+        // never advertise the password itself, only that there is one
+        memset(newBeacon.Room.Password, 0, sizeof(newBeacon.Room.Password));
 
+        // full room info goes to the whole subnet (it used to go to 0.0.0.0 and never left the machine)
         sendto(DiscoverySocket, (const char*)&newBeacon, sizeof(newBeacon), 0, (const sockaddr_t*)&saddr, sizeof(saddr));
+        sendto(DiscoverySocket, (const char*)&newBeacon, sizeof(newBeacon), 0, (const sockaddr_t*)&laddr, sizeof(laddr));
         Platform::Log(Platform::LogLevel::Info, "LAN: discovery broadcast sent (legacy + new)\n");
     }
     else
@@ -828,7 +906,13 @@ void LAN::ProcessDiscovery()
 
             if (DiscoveryList.find(key) != DiscoveryList.end())
             {
-                if (beacon.Tick <= DiscoveryList[key].Tick)
+                const DiscoveryData& known = DiscoveryList[key];
+                // hosts send a legacy and a full beacon with the same tick: keep the full one
+                bool upgrade = (beacon.Tick == known.Tick) && (version > known.Version);
+                if (beacon.Tick <= known.Tick && !upgrade)
+                    continue;
+                // and don't let the next legacy beacon wipe the full room info
+                if (version < known.Version && (beacon.Tick - known.Tick) < 2500)
                     continue;
             }
 
@@ -876,6 +960,7 @@ void LAN::HostUpdateRoomInfo()
     Platform::Mutex_Lock(RoomMutex);
     memcpy(&cmd[1], &CurrentRoom, sizeof(RoomInfo));
     Platform::Mutex_Unlock(RoomMutex);
+    memset(&cmd[1 + offsetof(RoomInfo, Password)], 0, sizeof(RoomInfo::Password));
     ENetPacket* pkt = enet_packet_create(cmd, 1+sizeof(RoomInfo), ENET_PACKET_FLAG_RELIABLE);
     enet_host_broadcast(Host, Chan_Cmd, pkt);
 }
@@ -930,6 +1015,9 @@ void LAN::ProcessHostEvent(ENetEvent& event)
                 Players[id].Address = event.peer->address.host;
                 event.peer->data = &Players[id];
                 NumPlayers++;
+                Platform::Mutex_Lock(RoomMutex);
+                CurrentRoom.NumPlayers = NumPlayers;
+                Platform::Mutex_Unlock(RoomMutex);
 
                 Platform::Mutex_Unlock(PlayersMutex);
 
@@ -953,9 +1041,14 @@ void LAN::ProcessHostEvent(ENetEvent& event)
             int id = player->ID;
             RemotePeers[id] = nullptr;
 
+            Platform::Mutex_Lock(PlayersMutex);
             player->ID = 0;
             player->Status = Player_None;
             NumPlayers--;
+            Platform::Mutex_Lock(RoomMutex);
+            CurrentRoom.NumPlayers = NumPlayers;
+            Platform::Mutex_Unlock(RoomMutex);
+            Platform::Mutex_Unlock(PlayersMutex);
 
             // broadcast updated player list
             HostUpdatePlayerList();
@@ -1075,6 +1168,7 @@ void LAN::ProcessHostEvent(ENetEvent& event)
                     Platform::Mutex_Lock(RoomMutex);
                     memcpy(&cmd[1], &CurrentRoom, sizeof(RoomInfo));
                     Platform::Mutex_Unlock(RoomMutex);
+                    memset(&cmd[1 + offsetof(RoomInfo, Password)], 0, sizeof(RoomInfo::Password));
                     ENetPacket* pkt = enet_packet_create(cmd, 1 + sizeof(RoomInfo), ENET_PACKET_FLAG_RELIABLE);
                     enet_peer_send(event.peer, Chan_Cmd, pkt);
                     
@@ -1096,16 +1190,7 @@ void LAN::ProcessHostEvent(ENetEvent& event)
                     memcpy(message, &data[5], 255);
                     message[255] = '\0';
                     
-                    // Add to chat history
-                    Platform::Mutex_Lock(ChatMutex);
-                    ChatMessage msg;
-                    msg.SenderID = senderID;
-                    strncpy(msg.Message, message, 255);
-                    msg.Timestamp = (u64)Platform::GetMSCount();
-                    ChatHistory.push_back(msg);
-                    if (ChatHistory.size() > 100)
-                        ChatHistory.erase(ChatHistory.begin());
-                    Platform::Mutex_Unlock(ChatMutex);
+                    PushChat(senderID, message);
                     
                     // Broadcast to all clients
                     ENetPacket* pkt = enet_packet_create(event.packet->data, event.packet->dataLength, ENET_PACKET_FLAG_RELIABLE);
@@ -1256,6 +1341,42 @@ void LAN::ProcessClientEvent(ENetEvent& event)
                     if (!player) break;
 
                     ConnectedBitmask &= ~(1 << player->ID);
+                }
+                break;
+
+            case Cmd_RoomInfo: // host sending room information
+                {
+                    if (event.packet->dataLength != (1+sizeof(RoomInfo))) break;
+                    if (event.peer != RemotePeers[0]) break; // only the host sends this
+
+                    Platform::Mutex_Lock(RoomMutex);
+                    memcpy(&CurrentRoom, &data[1], sizeof(RoomInfo));
+                    CurrentRoom.RoomCode[sizeof(CurrentRoom.RoomCode)-1] = '\0';
+                    CurrentRoom.RoomName[sizeof(CurrentRoom.RoomName)-1] = '\0';
+                    CurrentRoom.GameName[sizeof(CurrentRoom.GameName)-1] = '\0';
+                    CurrentRoom.Description[sizeof(CurrentRoom.Description)-1] = '\0';
+                    CurrentRoom.Password[0] = '\0';
+                    Platform::Mutex_Unlock(RoomMutex);
+                }
+                break;
+
+            case Cmd_ChatMessage: // chat message relayed by the host
+                {
+                    if (event.packet->dataLength < 6) break; // cmd(1) + senderID(4) + text
+                    // clients broadcast to every peer and the host relays to everyone,
+                    // so only take the host's copy, and skip our own message
+                    if (event.peer != RemotePeers[0]) break;
+
+                    u32 senderID = data[1] | (data[2] << 8) | (data[3] << 16) | (data[4] << 24);
+                    if (senderID == (u32)MyPlayer.ID) break;
+
+                    size_t msgLen = event.packet->dataLength - 5;
+                    if (msgLen > 255) msgLen = 255;
+
+                    char text[256];
+                    memcpy(text, &data[5], msgLen);
+                    text[msgLen] = '\0';
+                    PushChat(senderID, text);
                 }
                 break;
 
@@ -1661,7 +1782,9 @@ void LAN::HandleNodeMapPacket(u8* data, int len)
         
         if (node_id >= 16) continue;
         if (node_id == MyPlayer.ID) continue;
-        
+        // the host entry comes from the player list; don't turn it into a client
+        if (Players[node_id].Status == Player_Host || node_id == 0) continue;
+
         Players[node_id].ID = node_id;
         Players[node_id].Address = addr;
         Players[node_id].Status = Player_Client;

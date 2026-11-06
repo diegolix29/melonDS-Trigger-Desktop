@@ -99,6 +99,7 @@ public:
         u32 SenderID;
         char Message[256];
         u64 Timestamp;
+        char SenderName[32];    // looked up when the message arrives (the sender may leave later)
     };
 
     bool StartDiscovery();
@@ -111,11 +112,18 @@ public:
     std::vector<Player> GetPlayerList();
     RoomInfo GetRoomInfo();
     int GetNumPlayers() { return NumPlayers; }
+    bool IsInSession() const { return Host != nullptr; } // hosting or joined (not just browsing)
+    bool IsHosting() const { return IsHost && Host != nullptr; }
+    u32 GetHostAddress() const { return HostAddress; } // network byte order (clients)
+
+    // Host only: what the room is playing, shown to everyone browsing or in the room.
+    void SetRoomGame(const char* game, bool inGame);
     int GetMaxPlayers() { return MaxPlayers; }
 
     // Chat
     void SendChatMessage(const char* message);
     std::vector<ChatMessage> GetChatMessages();
+    u32 GetChatTotal() const { return ChatTotal; } // messages received this session, never wraps at 100
 
     // Moderation (host only)
     bool KickPlayer(int playerID);
@@ -166,7 +174,10 @@ private:
     Platform::Mutex* RoomMutex;
 
     std::vector<ChatMessage> ChatHistory;
+    u32 ChatTotal = 0;
     Platform::Mutex* ChatMutex;
+
+    void PushChat(u32 senderID, const char* text);
 
     Player MyPlayer;
     u32 HostAddress;
