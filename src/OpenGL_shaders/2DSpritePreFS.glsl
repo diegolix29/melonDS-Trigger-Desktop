@@ -77,7 +77,7 @@ vec4 GetSpritePixel(int sprite, ivec2 coord)
         col += uOAM[sprite].PalOffset;
 
         ret = GetOBJPalEntry(0, col);
-        ret.a = ((col & 0xF) == 0) ? 0 : 1;
+        ret.a = ((col & 0xF) == 0) ? 0.0 : 1.0;
     }
     else if (uOAM[sprite].Type == 1)
     {
@@ -92,7 +92,7 @@ vec4 GetSpritePixel(int sprite, ivec2 coord)
         int col = VRAMRead8(tileoffset);
 
         ret = GetOBJPalEntry(uOAM[sprite].PalOffset, col);
-        ret.a = (col == 0) ? 0 : 1;
+        ret.a = (col == 0) ? 0.0 : 1.0;
     }
     else //if (uOAM[sprite].Type == 2)
     {
@@ -104,9 +104,9 @@ vec4 GetSpritePixel(int sprite, ivec2 coord)
 
         int col = VRAMRead16(tileoffset);
 
-        ret.r = float((col << 1) & 0x3E) / 63;
-        ret.g = float((col >> 4) & 0x3E) / 63;
-        ret.b = float((col >> 9) & 0x3E) / 63;
+        ret.r = float((col << 1) & 0x3E) / 63.0;
+        ret.g = float((col >> 4) & 0x3E) / 63.0;
+        ret.b = float((col >> 9) & 0x3E) / 63.0;
         ret.a = float(col >> 15);
     }
 

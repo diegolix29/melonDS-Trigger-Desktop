@@ -119,8 +119,8 @@ vec4 BG2CalcAndFetch(vec2 coord, int line)
     if (uBGConfig[2].Type >= 2)
     {
         // rotscale BG
-        bgpos = vec2(bgoffset.xy) / 256;
-        vec4 rotscale = vec4(uScanline[line].BGRotscale[0]) / 256;
+        bgpos = vec2(bgoffset.xy) / 256.0;
+        vec4 rotscale = vec4(uScanline[line].BGRotscale[0]) / 256.0;
         mat2 rsmatrix = mat2(rotscale.xy, rotscale.zw);
         bgpos = bgpos + (coord * rsmatrix);
     }
@@ -138,7 +138,7 @@ vec4 BG2CalcAndFetch(vec2 coord, int line)
     if (uBGConfig[2].Type >= 7)
     {
         // hi-res capture
-        bgpos.y += uBGConfig[2].MapOffset;
+        bgpos.y += float(uBGConfig[2].MapOffset);
         vec3 capcoord = vec3(bgpos / vec2(uBGConfig[2].Size), uBGConfig[2].TileOffset);
 
         // due to the possible weirdness of display capture buffers,
@@ -165,8 +165,8 @@ vec4 BG3CalcAndFetch(vec2 coord, int line)
     if (uBGConfig[3].Type >= 2)
     {
         // rotscale BG
-        bgpos = vec2(bgoffset.xy) / 256;
-        vec4 rotscale = vec4(uScanline[line].BGRotscale[1]) / 256;
+        bgpos = vec2(bgoffset.xy) / 256.0;
+        vec4 rotscale = vec4(uScanline[line].BGRotscale[1]) / 256.0;
         mat2 rsmatrix = mat2(rotscale.xy, rotscale.zw);
         bgpos = bgpos + (coord * rsmatrix);
     }
@@ -184,7 +184,7 @@ vec4 BG3CalcAndFetch(vec2 coord, int line)
     if (uBGConfig[3].Type >= 7)
     {
         // hi-res capture
-        bgpos.y += uBGConfig[3].MapOffset;
+        bgpos.y += float(uBGConfig[3].MapOffset);
         vec3 capcoord = vec3(bgpos / vec2(uBGConfig[3].Size), uBGConfig[3].TileOffset);
 
         // due to the possible weirdness of display capture buffers,
@@ -304,7 +304,7 @@ vec4 CompositeLayers()
     {
         for (int bg = 3; bg >= 0; bg--)
         {
-            if ((uBGPrio[bg] == prio) && (layercol[bg].a > 0) && ((winsel & (1u << bg)) != 0u))
+            if ((uBGPrio[bg] == prio) && (layercol[bg].a > 0.0) && ((winsel & (1u << bg)) != 0u))
             {
                 col2 = col1;
                 mask2 = mask1 << 8;
@@ -314,7 +314,7 @@ vec4 CompositeLayers()
             }
         }
 
-        if (uEnableOBJ && (objflags.a == prio) && (layercol[4].a > 0) && ((winsel & (1u << 4)) != 0u))
+        if (uEnableOBJ && (objflags.a == prio) && (layercol[4].a > 0.0) && ((winsel & (1u << 4)) != 0u))
         {
             col2 = col1;
             mask2 = mask1 << 8;

@@ -102,7 +102,7 @@ vec4 GetBGLayerPixel(int layer, ivec2 coord)
         col += ((mapval >> 12) << 4);
 
         ret = GetBGPalEntry(layer, 0, col);
-        ret.a = ((col & 0xF) == 0) ? 0 : 1;
+        ret.a = ((col & 0xF) == 0) ? 0.0 : 1.0;
     }
     else if (uBGConfig[layer].Type == 1)
     {
@@ -149,7 +149,7 @@ vec4 GetBGLayerPixel(int layer, ivec2 coord)
         int pal = (uBGConfig[layer].PalOffset != 0) ? (mapval >> 12) : 0;
 
         ret = GetBGPalEntry(layer, pal, col);
-        ret.a = (col == 0) ? 0 : 1;
+        ret.a = (col == 0) ? 0.0 : 1.0;
     }
     else if (uBGConfig[layer].Type == 2)
     {
@@ -168,7 +168,7 @@ vec4 GetBGLayerPixel(int layer, ivec2 coord)
         int col = VRAMRead8(tileoffset);
 
         ret = GetBGPalEntry(layer, 0, col);
-        ret.a = (col == 0) ? 0 : 1;
+        ret.a = (col == 0) ? 0.0 : 1.0;
     }
     else if (uBGConfig[layer].Type == 3)
     {
@@ -195,7 +195,7 @@ vec4 GetBGLayerPixel(int layer, ivec2 coord)
         int pal = (uBGConfig[layer].PalOffset != 0) ? (mapval >> 12) : 0;
 
         ret = GetBGPalEntry(layer, pal, col);
-        ret.a = (col == 0) ? 0 : 1;
+        ret.a = (col == 0) ? 0.0 : 1.0;
     }
     else if (uBGConfig[layer].Type == 4)
     {
@@ -208,7 +208,7 @@ vec4 GetBGLayerPixel(int layer, ivec2 coord)
         int col = VRAMRead8(mapoffset);
 
         ret = GetBGPalEntry(layer, 0, col);
-        ret.a = (col == 0) ? 0 : 1;
+        ret.a = (col == 0) ? 0.0 : 1.0;
     }
     else if (uBGConfig[layer].Type == 5)
     {
@@ -220,9 +220,9 @@ vec4 GetBGLayerPixel(int layer, ivec2 coord)
 
         int col = VRAMRead16(mapoffset);
 
-        ret.r = float((col << 1) & 0x3E) / 63;
-        ret.g = float((col >> 4) & 0x3E) / 63;
-        ret.b = float((col >> 9) & 0x3E) / 63;
+        ret.r = float((col << 1) & 0x3E) / 63.0;
+        ret.g = float((col >> 4) & 0x3E) / 63.0;
+        ret.b = float((col >> 9) & 0x3E) / 63.0;
         ret.a = float(col >> 15);
     }
 

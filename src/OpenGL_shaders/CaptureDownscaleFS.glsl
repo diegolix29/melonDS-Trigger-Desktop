@@ -11,5 +11,5 @@ void main()
 {
     ivec4 col = ivec4(texture(InputTex, vec3(fTexcoord, uInputLayer)) * 255.0);
     oColor.rgb = vec3(col.rgb >> 3) / 31.0;
-    oColor.a = (col.a>0) ? 1 : 0;
+    oColor.a = (col.a>0) ? 1.0 : 0.0;
 }

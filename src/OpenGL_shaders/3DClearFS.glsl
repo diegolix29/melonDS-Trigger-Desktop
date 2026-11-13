@@ -11,7 +11,7 @@ void main()
 {
     oColor = vec4(uColor).rgba / 31.0;
     oAttr.r = float(uOpaquePolyID) / 63.0;
-    oAttr.g = 0;
+    oAttr.g = 0.0;
     oAttr.b = float(uFogFlag);
-    oAttr.a = 1;
+    oAttr.a = 1.0;
 }

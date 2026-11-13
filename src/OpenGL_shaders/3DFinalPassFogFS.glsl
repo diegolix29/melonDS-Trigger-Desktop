@@ -56,7 +56,7 @@ void main()
     vec4 depth = texelFetch(DepthBuffer, coord, 0);
     vec4 attr = texelFetch(AttrBuffer, coord, 0);
 
-    if (attr.b != 0) ret = CalculateFog(depth.r);
+    if (attr.b != 0.0) ret = CalculateFog(depth.r);
 
     oColor = ret;
 }

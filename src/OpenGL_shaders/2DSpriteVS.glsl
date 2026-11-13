@@ -38,8 +38,8 @@ void main()
 
     int totalprio = (uOAM[vSpriteIndex].BGPrio * 128) + vSpriteIndex;
     float z = float(totalprio) / 512.0;
-    gl_Position = vec4(((vec2(vPosition) * 2) / fbsize) - 1, z, 1);
-    fPosition = vPosition;
+    gl_Position = vec4(((vec2(vPosition) * 2.0) / fbsize) - 1.0, z, 1);
+    fPosition = vec2(vPosition);
     fSpriteIndex = vSpriteIndex;
 
     if (uOAM[vSpriteIndex].Rotscale == -1)
@@ -48,5 +48,5 @@ void main()
         fTexcoord = mix(tmp, (sprsize - tmp), uOAM[vSpriteIndex].Flip);
     }
     else
-        fTexcoord = (vec2(vTexcoord) * sprsize) - (sprsize / 2);
+        fTexcoord = (vec2(vTexcoord) * sprsize) - (sprsize / 2.0);
 }

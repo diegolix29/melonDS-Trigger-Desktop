@@ -34,7 +34,7 @@ void main()
     fpos.xy = (((vec2(vPosition.xy) ) * 2.0) / uScreenSize) - 1.0;
 #ifdef WBuffer
     fZ = float(vPosition.z << zshift) / 16777216.0;
-    fpos.z = 0;
+    fpos.z = 0.0;
 #else
     fpos.z = (float(vPosition.z << zshift) / 8388608.0) - 1.0;
 #endif
@@ -43,14 +43,14 @@ void main()
 
     int texwidth = vPolygonAttr.z & 0xFFFF;
     int texheight = (vPolygonAttr.z >> 16) & 0xFFFF;
-    vec2 texfactor = 1.0 / (16 * vec2(texwidth, texheight));
+    vec2 texfactor = 1.0 / (16.0 * vec2(texwidth, texheight));
 
     vec2 texcoord = vec2(vTexcoord);
     int capyoffset = vPolygonAttr.y >> 16;
     int attrz = 0;
     if (capyoffset != -1)
     {
-        texcoord.y += capyoffset;
+        texcoord.y += float(capyoffset);
         if (texwidth == 128)
             attrz = 1;
         else

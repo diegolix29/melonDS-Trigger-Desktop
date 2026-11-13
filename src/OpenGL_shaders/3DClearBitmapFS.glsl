@@ -21,8 +21,8 @@ void main()
 
     oColor = color;
     oAttr.r = float(uOpaquePolyID) / 63.0;
-    oAttr.g = 0;
+    oAttr.g = 0.0;
     oAttr.b = float(depth >> 24);
-    oAttr.a = 1;
+    oAttr.a = 1.0;
     gl_FragDepth = fdepth;
 }

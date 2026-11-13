@@ -127,7 +127,9 @@ LAN::LAN() noexcept : Inited(false)
 
     ConnectedBitmask = 0;
 
-    MPRecvTimeout = 500; // Increased from 100ms to 500ms for more reliable data transfer
+    // Same as upstream: a lost reply stalls the frame this long, so keep it short
+    // (500 ms made DS wireless crawl on phones, which drop more packets than PCs).
+    MPRecvTimeout = 25;
     LastHostID = -1;
     LastHostPeer = nullptr;
 
